@@ -1,0 +1,42 @@
+# HelixTest – CI (build and test). For conformance against your deployment, set WES_URL etc. in
+# repository secrets and add a job that runs: cargo run --bin ga4gh-test-suite --release -- --all --report json --fail-level 2
+# See ga4gh-test-suite/README.md "CI integration" and "For platform implementers".
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build
+        run: cargo build --bin ga4gh-test-suite --release
+
+      - name: Test
+        run: cargo test --workspace

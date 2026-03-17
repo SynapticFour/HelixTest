@@ -1,0 +1,14 @@
+[services]
+wes = "http://localhost:8080"
+tes = "http://localhost:8081"
+drs = "http://localhost:8082"
+trs = "http://localhost:8083"
+beacon = "http://localhost:8084"
+auth = "http://localhost:8085"
+
+[features]
+# Conservative defaults for a generic GA4GH deployment.
+supports_scatter_gather = false
+supports_beacon_v2 = false
+strict_drs_checksums = false
+

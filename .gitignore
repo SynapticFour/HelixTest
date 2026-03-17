@@ -1,0 +1,11 @@
+target/
+**/target/
+**/Cargo.lock
+.DS_Store
+.vscode/
+.idea/
+.env
+ga4gh-test-suite/.env
+ga4gh-test-suite/test-data/generated/
+ga4gh-test-suite/docker/.tmp/
+

@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "crates/common",
+    "crates/framework",
+    "crates/api-tests",
+    "crates/workflow-tests",
+    "crates/e2e-tests",
+    "crates/auth-tests",
+    "crates/crypt4gh-tests",
+    "crates/cli",
+]
+

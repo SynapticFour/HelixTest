@@ -1,0 +1,14 @@
+[services]
+wes = "http://localhost:8080"
+tes = "http://localhost:8081"
+drs = "http://localhost:8082"
+trs = "http://localhost:8083"
+beacon = "http://localhost:8084"
+auth = "http://localhost:8085"
+
+[features]
+# Strict profile: enable all robustness / checksum / beacon checks.
+supports_scatter_gather = true
+supports_beacon_v2 = true
+strict_drs_checksums = true
+
