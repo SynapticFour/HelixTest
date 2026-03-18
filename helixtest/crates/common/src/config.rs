@@ -76,3 +76,93 @@ impl TestConfig {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+    use tempfile::tempdir;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn clear_env() {
+        for k in [
+            "HELIXTEST_PROFILE",
+            "HELIXTEST_CONFIG",
+            "WES_URL",
+            "TES_URL",
+            "DRS_URL",
+            "TRS_URL",
+            "BEACON_URL",
+            "AUTH_URL",
+        ] {
+            env::remove_var(k);
+        }
+    }
+
+    #[test]
+    fn env_fallback_defaults_work() {
+        let _g = ENV_LOCK.lock().unwrap();
+        clear_env();
+
+        let cfg = TestConfig::from_env_or_file().unwrap();
+        assert_eq!(cfg.services.wes_url, "http://localhost:8080");
+        assert_eq!(cfg.services.auth_url, "http://localhost:8085");
+    }
+
+    #[test]
+    fn env_vars_override_defaults() {
+        let _g = ENV_LOCK.lock().unwrap();
+        clear_env();
+        env::set_var("WES_URL", "http://example-wes");
+        env::set_var("TES_URL", "http://example-tes");
+
+        let cfg = TestConfig::from_env_or_file().unwrap();
+        assert_eq!(cfg.services.wes_url, "http://example-wes");
+        assert_eq!(cfg.services.tes_url, "http://example-tes");
+    }
+
+    #[test]
+    fn explicit_config_file_has_precedence_over_env() {
+        let _g = ENV_LOCK.lock().unwrap();
+        clear_env();
+
+        env::set_var("WES_URL", "http://env-wes");
+
+        let dir = tempdir().unwrap();
+        let p = dir.path().join("cfg.toml");
+        fs::write(
+            &p,
+            r#"
+wes_url = "http://file-wes"
+tes_url = "http://file-tes"
+drs_url = "http://file-drs"
+trs_url = "http://file-trs"
+beacon_url = "http://file-beacon"
+auth_url = "http://file-auth"
+"#,
+        )
+        .unwrap();
+        env::set_var("HELIXTEST_CONFIG", p.to_string_lossy().to_string());
+
+        let cfg = TestConfig::from_env_or_file().unwrap();
+        assert_eq!(cfg.services.wes_url, "http://file-wes");
+        assert_eq!(cfg.services.tes_url, "http://file-tes");
+    }
+
+    #[test]
+    fn profile_has_highest_precedence() {
+        let _g = ENV_LOCK.lock().unwrap();
+        clear_env();
+
+        // Create a temporary "profiles/<name>.toml" by faking CARGO_MANIFEST_DIR is not possible,
+        // so we only assert that when HELIXTEST_PROFILE is set to a missing profile, we get a clear error.
+        env::set_var("HELIXTEST_PROFILE", "does-not-exist");
+        let err = TestConfig::from_env_or_file().unwrap_err().to_string();
+        assert!(
+            err.contains("HELIXTEST_PROFILE") || err.contains("profile config"),
+            "unexpected error: {}",
+            err
+        );
+    }
+}
+

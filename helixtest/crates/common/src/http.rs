@@ -36,6 +36,9 @@ impl HttpClient {
         let status = resp.status();
         let text = resp.text().await?;
         debug!(%url, %status, body = %text, "GET response");
+        if !status.is_success() {
+            anyhow::bail!("GET {} failed with HTTP {}: {}", url, status, text);
+        }
         let value: serde_json::Value = serde_json::from_str(&text)?;
         Ok(value)
     }
@@ -63,6 +66,9 @@ impl HttpClient {
         let status = resp.status();
         let text = resp.text().await?;
         debug!(%url, %status, body = %text, "POST response");
+        if !status.is_success() {
+            anyhow::bail!("POST {} failed with HTTP {}: {}", url, status, text);
+        }
         let value: serde_json::Value = serde_json::from_str(&text)?;
         Ok(value)
     }
@@ -85,7 +91,7 @@ mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
-    use wiremock::matchers::method;
+    use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]
@@ -158,6 +164,56 @@ mod tests {
         assert!(res.is_ok(), "expected success after retries: {:?}", res);
         let v = res.unwrap();
         assert_eq!(v.get("ok").and_then(|x| x.as_bool()), Some(true));
+    }
+
+    #[tokio::test]
+    async fn get_json_non_success_is_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/boom"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("nope"))
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::with_timeout(Duration::from_secs(1));
+        let url = format!("{}/boom", server.uri());
+        let err = client.get_json(&url).await.unwrap_err().to_string();
+        assert!(err.contains("HTTP 500"), "unexpected error: {}", err);
+    }
+
+    #[tokio::test]
+    async fn get_json_invalid_json_is_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/badjson"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("{not json"))
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::with_timeout(Duration::from_secs(1));
+        let url = format!("{}/badjson", server.uri());
+        let err = client.get_json(&url).await.unwrap_err().to_string();
+        assert!(
+            err.to_lowercase().contains("expected") || err.to_lowercase().contains("at line"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[tokio::test]
+    async fn post_json_non_success_is_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/boom"))
+            .respond_with(ResponseTemplate::new(400).set_body_string("bad request"))
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::with_timeout(Duration::from_secs(1));
+        let url = format!("{}/boom", server.uri());
+        let body = serde_json::json!({"x": 1});
+        let err = client.post_json(&url, &body).await.unwrap_err().to_string();
+        assert!(err.contains("HTTP 400"), "unexpected error: {}", err);
     }
 }
 
