@@ -38,5 +38,6 @@ jobs:
       - name: Build
         run: cargo build --bin helixtest --release
 
+      # Exclude integration crates that require live WES/TES/DRS/TRS; they would hang on connection timeout.
       - name: Test
-        run: cargo test --workspace
+        run: cargo test --workspace --exclude api-tests --exclude auth-tests --exclude e2e-tests --exclude workflow-tests
