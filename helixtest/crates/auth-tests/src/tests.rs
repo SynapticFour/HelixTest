@@ -3,7 +3,6 @@ use chrono::Duration;
 use common::auth::build_jwt;
 use common::config::TestConfig;
 use common::http::HttpClient;
-use serde_json::json;
 
 fn auth_secret() -> String {
     std::env::var("HELIXTEST_SHARED_SECRET").unwrap_or_else(|_| "test-secret".to_owned())

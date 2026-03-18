@@ -4,8 +4,6 @@ use common::http::HttpClient;
 use common::schemas::{assert_required_string_field, validate_json_against};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 struct WesServiceInfo {
