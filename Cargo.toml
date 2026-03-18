@@ -1,19 +1,19 @@
 [workspace]
 resolver = "2"
 members = [
-    "ga4gh-test-suite/crates/common",
-    "ga4gh-test-suite/crates/api-tests",
-    "ga4gh-test-suite/crates/workflow-tests",
-    "ga4gh-test-suite/crates/e2e-tests",
-    "ga4gh-test-suite/crates/auth-tests",
-    "ga4gh-test-suite/crates/crypt4gh-tests",
-    "ga4gh-test-suite/crates/cli",
+    "helixtest/crates/common",
+    "helixtest/crates/api-tests",
+    "helixtest/crates/workflow-tests",
+    "helixtest/crates/e2e-tests",
+    "helixtest/crates/auth-tests",
+    "helixtest/crates/crypt4gh-tests",
+    "helixtest/crates/cli",
 ]
 
 [workspace.package]
 edition = "2021"
 license = "Apache-2.0"
-authors = ["Synaptic Four <https://synapticfour.org>"]
+authors = ["Synaptic Four <contact@synapticfour.com>"]
 license-file = "LICENSE"
 
 [workspace.dependencies]
@@ -45,4 +45,7 @@ tempfile = "3"
 tokio-retry = "0.3"
 clap = { version = "4", features = ["derive"] }
 toml = "0.8"
+serde_yaml = "0.9"
+openapi-deref = "0.1"
+once_cell = "1.21"
 

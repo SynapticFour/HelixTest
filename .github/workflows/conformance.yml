@@ -1,6 +1,6 @@
 # HelixTest – CI (build and test). For conformance against your deployment, set WES_URL etc. in
-# repository secrets and add a job that runs: cargo run --bin ga4gh-test-suite --release -- --all --report json --fail-level 2
-# See ga4gh-test-suite/README.md "CI integration" and "For platform implementers".
+# repository secrets and add a job that runs: cargo run --bin helixtest --release -- --all --report json --fail-level 2
+# See helixtest/README.md "CI integration" and "For platform implementers".
 
 name: CI
 
@@ -36,7 +36,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Build
-        run: cargo build --bin ga4gh-test-suite --release
+        run: cargo build --bin helixtest --release
 
       - name: Test
         run: cargo test --workspace

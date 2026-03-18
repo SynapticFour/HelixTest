@@ -5,7 +5,7 @@ target/
 .vscode/
 .idea/
 .env
-ga4gh-test-suite/.env
-ga4gh-test-suite/test-data/generated/
-ga4gh-test-suite/docker/.tmp/
+helixtest/.env
+helixtest/test-data/generated/
+helixtest/docker/.tmp/
 
