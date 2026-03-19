@@ -39,4 +39,3 @@ fn invalid_enum_argument_fails() {
         .failure()
         .stderr(predicate::str::contains("possible values"));
 }
-

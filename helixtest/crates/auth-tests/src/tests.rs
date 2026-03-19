@@ -25,12 +25,7 @@ async fn valid_token_grants_access() -> Result<()> {
         cfg.services.drs_url.trim_end_matches('/'),
         "test-object-1"
     );
-    let resp = client
-        .inner()
-        .get(&url)
-        .bearer_auth(&token)
-        .send()
-        .await?;
+    let resp = client.inner().get(&url).bearer_auth(&token).send().await?;
     assert_eq!(resp.status(), 200, "Valid token must be accepted");
     Ok(())
 }
@@ -52,12 +47,7 @@ async fn expired_token_is_rejected() -> Result<()> {
         cfg.services.drs_url.trim_end_matches('/'),
         "test-object-1"
     );
-    let resp = client
-        .inner()
-        .get(&url)
-        .bearer_auth(&token)
-        .send()
-        .await?;
+    let resp = client.inner().get(&url).bearer_auth(&token).send().await?;
     assert!(
         resp.status().is_client_error(),
         "Expired token must be rejected with 4xx, got {}",
@@ -83,12 +73,7 @@ async fn missing_scope_denies_access() -> Result<()> {
         cfg.services.drs_url.trim_end_matches('/'),
         "test-object-1"
     );
-    let resp = client
-        .inner()
-        .get(&url)
-        .bearer_auth(&token)
-        .send()
-        .await?;
+    let resp = client.inner().get(&url).bearer_auth(&token).send().await?;
     assert!(
         resp.status() == 403 || resp.status() == 401,
         "Missing scope must deny access, got {}",
@@ -96,4 +81,3 @@ async fn missing_scope_denies_access() -> Result<()> {
     );
     Ok(())
 }
-

@@ -2,7 +2,7 @@ use anyhow::Result;
 use common::config::TestConfig;
 use common::ga4gh_schemas;
 use common::http::HttpClient;
-use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCategory, TestCaseResult};
+use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCaseResult, TestCategory};
 use common::workflow::{
     fetch_wes_run_output, poll_wes_run_until_terminal, submit_wes_run, WesRunRequest,
 };
@@ -49,8 +49,7 @@ async fn level0_service_info_reachable(cfg: &TestConfig, client: &HttpClient) ->
             name: "WES service-info reachable".into(),
             level: ComplianceLevel::Level0,
             passed: resp.status().is_success(),
-            error: (!resp.status().is_success())
-                .then(|| format!("HTTP {}", resp.status())),
+            error: (!resp.status().is_success()).then(|| format!("HTTP {}", resp.status())),
             category: TestCategory::Other,
             weight: 1.0,
         },
@@ -87,9 +86,7 @@ async fn level1_service_info_schema(cfg: &TestConfig, client: &HttpClient) -> Te
                         .find(|s| *s == "1.0" || *s == "1.1")
                 });
             if ok_version.is_none() {
-                errors.push(
-                    "supported_wes_versions must contain at least 1.0 or 1.1".to_string(),
-                );
+                errors.push("supported_wes_versions must contain at least 1.0 or 1.1".to_string());
             }
             TestCaseResult {
                 name: "WES service-info schema (GA4GH official)".into(),
@@ -200,7 +197,10 @@ async fn level2_failure_state(cfg: &TestConfig, client: &HttpClient) -> TestCase
     }
 }
 
-async fn level2_missing_inputs_error_state(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
+async fn level2_missing_inputs_error_state(
+    cfg: &TestConfig,
+    client: &HttpClient,
+) -> TestCaseResult {
     // Use a valid workflow but omit required input parameters
     let req = WesRunRequest {
         workflow_url: "trs://test-tool/cwl-echo/1.0".to_owned(),
@@ -239,7 +239,10 @@ async fn level2_missing_inputs_error_state(cfg: &TestConfig, client: &HttpClient
     }
 }
 
-async fn level2_incompatible_type_error_state(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
+async fn level2_incompatible_type_error_state(
+    cfg: &TestConfig,
+    client: &HttpClient,
+) -> TestCaseResult {
     // Use a CWL workflow but declare an incompatible workflow_type
     let req = WesRunRequest {
         workflow_url: "trs://test-tool/cwl-echo/1.0".to_owned(),
@@ -347,7 +350,8 @@ async fn robustness_polling_timeout_yields_clear_error(
     }
     .await;
     let err_msg = result.err().unwrap_or_default();
-    let passed = err_msg.to_lowercase().contains("timed out") || err_msg.to_lowercase().contains("timeout");
+    let passed =
+        err_msg.to_lowercase().contains("timed out") || err_msg.to_lowercase().contains("timeout");
     TestCaseResult {
         name: "Robustness: polling timeout yields clear error".into(),
         level: ComplianceLevel::Level2,
@@ -357,4 +361,3 @@ async fn robustness_polling_timeout_yields_clear_error(
         weight: 1.0,
     }
 }
-

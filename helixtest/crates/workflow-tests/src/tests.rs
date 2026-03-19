@@ -237,5 +237,3 @@ async fn scatter_gather_workflow_produces_expected_checksum() -> Result<()> {
 
     Ok(())
 }
-
-

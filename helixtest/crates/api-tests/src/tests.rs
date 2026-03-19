@@ -124,4 +124,3 @@ async fn trs_tools_and_versions_contract() -> Result<()> {
 
     Ok(())
 }
-

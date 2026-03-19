@@ -1,8 +1,8 @@
 use anyhow::Result;
 use base64::{engine::general_purpose, Engine as _};
 use chrono::{Duration, Utc};
-use serde::Serialize;
 use hmac::{Hmac, Mac};
+use serde::Serialize;
 use sha2::Sha256;
 
 #[derive(Debug, Clone, Serialize)]
@@ -54,4 +54,3 @@ pub fn build_jwt(
     let sig_b64 = base64url_encode(&sig);
     Ok(format!("{}.{}", signing_input, sig_b64))
 }
-

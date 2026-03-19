@@ -11,8 +11,9 @@ HelixTest currently targets:
 - **DRS** – Data Repository Service
 - **TRS** – Tool Registry Service
 - **Beacon v2**
+- **htsget 1.3.0** (GA4GH tickets + DRS stream links; Ferrum [`ferrum-htsget`](https://github.com/SynapticFour/Ferrum) on `/ga4gh/htsget/v1`)
 - **GA4GH Passports / AAI / OIDC**
-- **Crypt4GH-style encryption** (using `age` as a pluggable backend)
+- **Crypt4GH-style encryption** (local `age`-based checks; optional Ferrum DRS **rewrap** / **decrypt_plain** via the GA4GH `crypt4gh` crate)
 
 For Ferrum-specific guidance, see the dedicated document: [docs/ferrum.md](docs/ferrum.md).
 
@@ -26,13 +27,13 @@ HelixTest is organized as a **CLI** that runs a **framework** of per-service che
   User: helixtest --all [--report table|json|scores|coverage]
                     │
                     ▼
-  CLI ──────────► Framework (WES, DRS, TRS, TES, Beacon, Auth, Crypt4GH, E2E)
+  CLI ──────────► Framework (WES, DRS, TRS, TES, Beacon, htsget, Auth, Crypt4GH, E2E)
                     │
                     ▼
   Common (config, http, workflow, report, auth, crypto, logging, schemas)
                     │
                     ▼
-  External services (WES, TES, DRS, TRS, Beacon, Auth)
+  External services (WES, TES, DRS, TRS, Beacon, htsget, Auth)
 ```
 
 See **[docs/architecture.md](docs/architecture.md)** for a full architecture diagram and data flow.
@@ -94,6 +95,8 @@ drs = "http://localhost:8082"
 trs = "http://localhost:8083"
 beacon = "http://localhost:8084"
 auth = "http://localhost:8085"
+# Optional: explicit htsget base (include `/ga4gh/htsget/v1` if not using GATEWAY_BASE)
+# htsget = "http://localhost:8080/ga4gh/htsget/v1"
 ```
 
 You can point to a custom config file with:
@@ -112,8 +115,24 @@ If no TOML config is found, HelixTest uses:
 - `TRS_URL`
 - `BEACON_URL`
 - `AUTH_URL`
+- `HTSGET_URL` (optional) – base URL of the htsget service (e.g. `http://host:port/ga4gh/htsget/v1`)
+
+**Ferrum gateway:** `profiles/ferrum.toml` uses one origin (see [docs/ferrum.md](docs/ferrum.md)); htsget is derived as `{gateway}/ga4gh/htsget/v1` from `WES_URL` / `DRS_URL` paths, or with `--mode ferrum` from a bare `http://host:port`. Override anytime with `GATEWAY_BASE`, `HTSGET_URL`, or `[services] htsget`.
+
+**htsget object IDs (Ferrum demo):** `HTSGET_READS_OBJECT_ID` (default `test-object-1`), `HTSGET_VARIANTS_OBJECT_ID` (default `demo-sample-vcf`). Optional dataset-auth probe: `HELIXTEST_HTSGET_DATASET_OBJECT_ID`, `HELIXTEST_HTSGET_DATASET_BEARER`.
 
 These must point at your GA4GH-compliant deployment.
+
+#### Crypt4GH: Ferrum rewrap vs decrypt_plain (optional)
+
+The framework includes **Level 3** HTTP checks that are **off by default** so CI stays green until Ferrum exposes the right modes:
+
+| Mode | What it tests | Enable |
+|------|----------------|--------|
+| **rewrap** | `GET` DRS `access_url` with `X-Crypt4GH-Public-Key`, receive Crypt4GH, decrypt with client secret key, optional match to DRS `checksums` sha256 | `HELIXTEST_FEATURE_CRYPT4GH_REWRAP=1` plus `CRYPT4GH_CLIENT_SECRET_KEY_PATH` (OpenSSH or Crypt4GH PEM). Optional: `CRYPT4GH_ENCRYPTED_DRS_OBJECT_ID`, `CRYPT4GH_CLIENT_PUBLIC_KEY_B64`, `CRYPT4GH_CLIENT_KEY_PASSPHRASE`. |
+| **decrypt_plain** | `GET` a **plaintext** object URL (server-side `stream_decrypt`) and compare SHA256 to the plaintext obtained from the rewrap path above | `HELIXTEST_FEATURE_CRYPT4GH_PLAIN=1` **and** `HELIXTEST_FEATURE_CRYPT4GH_REWRAP=1`, plus `C4_PLAIN_DOWNLOAD_URL` **or** `C4_PLAIN_URL_BASE` with optional `C4_PLAIN_URL_PATH`. |
+
+**Build note:** The Ferrum Crypt4GH integration uses the [`crypt4gh`](https://crates.io/crates/crypt4gh) crate (libsodium). Install a system **libsodium** before building (e.g. macOS: `brew install libsodium`, Debian/Ubuntu: `libsodium-dev`).
 
 #### For platform implementers
 
@@ -135,7 +154,7 @@ From the repository root (or the `helixtest` directory):
 cargo run --bin helixtest -- --all
 ```
 
-**Options:** `--report table|json|scores|coverage` (default: table), `--mode generic|ferrum`, `--start-ferrum`, `--fail-level <N>`, `--only <service>` (repeatable), `--verbose`.
+**Options:** `--report table|json|scores|coverage` (default: table), `--mode generic|ferrum`, `--start-ferrum`, `--fail-level <N>`, `--only <service>` (repeatable: `wes`, `tes`, `drs`, `trs`, `beacon`, `htsget`, `auth`, `crypt4gh`, `e2e`), `--verbose`.
 
 **Examples:**
 

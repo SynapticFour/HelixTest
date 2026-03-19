@@ -1,11 +1,13 @@
 use anyhow::Result;
 use common::config::TestConfig;
 use common::http::HttpClient;
-use common::workflow::{fetch_wes_run_output, poll_wes_run_until_terminal, submit_wes_run, WesRunRequest};
+use common::workflow::{
+    fetch_wes_run_output, poll_wes_run_until_terminal, submit_wes_run, WesRunRequest,
+};
 use serde_json::Value;
-use url::Url;
 use std::path::PathBuf;
 use std::time::Duration;
+use url::Url;
 
 fn test_data_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -60,10 +62,7 @@ async fn full_trs_drs_wes_tes_beacon_pipeline() -> Result<()> {
         .get("id")
         .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("DRS object missing id: {}", drs_obj))?;
-    assert_eq!(
-        drs_id, drs_object_id,
-        "DRS id must propagate requested id"
-    );
+    assert_eq!(drs_id, drs_object_id, "DRS id must propagate requested id");
 
     // 3. Execute via WES using TRS URL and DRS object
     // Derive TRS registry host from the configured TRS_URL
@@ -99,10 +98,7 @@ async fn full_trs_drs_wes_tes_beacon_pipeline() -> Result<()> {
         .get("id")
         .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("TES task missing id: {}", tes_task))?;
-    assert_eq!(
-        tes_task_id, run_id,
-        "TES task id must propagate WES run id"
-    );
+    assert_eq!(tes_task_id, run_id, "TES task id must propagate WES run id");
 
     let status = poll_wes_run_until_terminal(
         &client,
@@ -142,19 +138,28 @@ async fn full_trs_drs_wes_tes_beacon_pipeline() -> Result<()> {
         .join("expected")
         .join("e2e")
         .join("result.txt.sha256");
-    let expected_checksum = std::fs::read_to_string(&expected_checksum_path)?.trim().to_owned();
+    let expected_checksum = std::fs::read_to_string(&expected_checksum_path)?
+        .trim()
+        .to_owned();
 
     // Download the result via DRS access_url and compute checksum from HTTP response
     let access_methods = drs_out_obj
         .get("access_methods")
         .and_then(|x| x.as_array())
-        .ok_or_else(|| anyhow::anyhow!("DRS output object missing access_methods array: {}", drs_out_obj))?;
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "DRS output object missing access_methods array: {}",
+                drs_out_obj
+            )
+        })?;
     let first = &access_methods[0];
     let access_url = first
         .get("access_url")
         .and_then(|a| a.get("url"))
         .and_then(|x| x.as_str())
-        .ok_or_else(|| anyhow::anyhow!("access_methods[0].access_url.url missing: {}", drs_out_obj))?;
+        .ok_or_else(|| {
+            anyhow::anyhow!("access_methods[0].access_url.url missing: {}", drs_out_obj)
+        })?;
 
     let resp = client.inner().get(access_url).send().await?;
     if !resp.status().is_success() {
@@ -174,10 +179,7 @@ async fn full_trs_drs_wes_tes_beacon_pipeline() -> Result<()> {
     );
 
     // 6. Query Beacon to assert presence of test variant/sample
-    let beacon_query_url = format!(
-        "{}/query",
-        cfg.services.beacon_url.trim_end_matches('/')
-    );
+    let beacon_query_url = format!("{}/query", cfg.services.beacon_url.trim_end_matches('/'));
     let beacon_resp = client
         .post_json(
             &beacon_query_url,
@@ -197,7 +199,9 @@ async fn full_trs_drs_wes_tes_beacon_pipeline() -> Result<()> {
     let exists = beacon_resp
         .pointer("/response/exists")
         .and_then(|v| v.as_bool())
-        .ok_or_else(|| anyhow::anyhow!("Beacon response missing response.exists: {}", beacon_resp))?;
+        .ok_or_else(|| {
+            anyhow::anyhow!("Beacon response missing response.exists: {}", beacon_resp)
+        })?;
     assert!(
         exists,
         "Beacon must report existence for test variant after pipeline execution"
@@ -205,4 +209,3 @@ async fn full_trs_drs_wes_tes_beacon_pipeline() -> Result<()> {
 
     Ok(())
 }
-

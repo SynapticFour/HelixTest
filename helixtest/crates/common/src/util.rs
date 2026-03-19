@@ -19,4 +19,3 @@ pub fn sha256_file<P: AsRef<Path>>(path: P) -> Result<String> {
     let hash = hasher.finalize();
     Ok(format!("{:x}", hash))
 }
-

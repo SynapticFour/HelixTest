@@ -30,6 +30,7 @@ enum ServiceArg {
     Drs,
     Trs,
     Beacon,
+    Htsget,
     Auth,
     Crypt4gh,
     E2e,
@@ -43,6 +44,7 @@ impl ServiceArg {
             ServiceArg::Drs => ServiceKind::Drs,
             ServiceArg::Trs => ServiceKind::Trs,
             ServiceArg::Beacon => ServiceKind::Beacon,
+            ServiceArg::Htsget => ServiceKind::Htsget,
             ServiceArg::Auth => ServiceKind::Auth,
             ServiceArg::Crypt4gh => ServiceKind::Crypt4gh,
             ServiceArg::E2e => ServiceKind::E2e,
@@ -57,7 +59,9 @@ const CREDIT: &str = "Built with ❤️ by Synaptic Four · Apache-2.0";
 #[command(name = "helixtest")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "HelixTest — GA4GH Conformance Suite")]
-#[command(after_help = "Synaptic Four — Built with ❤️ for the open science community. GA4GH open standards for sovereign bioinformatics. Proudly developed by individuals on the autism spectrum in Germany. © 2025 Synaptic Four · Apache-2.0. Contact: contact@synapticfour.com · synapticfour.com")]
+#[command(
+    after_help = "Synaptic Four — Built with ❤️ for the open science community. GA4GH open standards for sovereign bioinformatics. Proudly developed by individuals on the autism spectrum in Germany. © 2025 Synaptic Four · Apache-2.0. Contact: contact@synapticfour.com · synapticfour.com"
+)]
 struct Args {
     /// Run full HelixTest conformance suite
     #[arg(long)]
@@ -101,7 +105,10 @@ async fn main() -> Result<()> {
         println!("{}", BANNER);
         println!("{}\n", CREDIT);
         if args.start_ferrum {
-            info!(action = "start_ferrum", "Starting Ferrum via docker compose");
+            info!(
+                action = "start_ferrum",
+                "Starting Ferrum via docker compose"
+            );
             let status = Command::new("docker")
                 .arg("compose")
                 .arg("up")
@@ -123,18 +130,15 @@ async fn main() -> Result<()> {
             Mode::Ferrum => FrameworkMode::Ferrum,
         };
 
-            info!(mode = ?args.mode, "Running HelixTest conformance suite");
+        info!(mode = ?args.mode, "Running HelixTest conformance suite");
         let mut report = run_all(framework_mode)
             .await
             .context("HelixTest conformance run failed (check config and service URLs)")?;
 
         // Optionally filter services in the final report (we still run all tests).
         if !args.only.is_empty() {
-            let allowed: HashSet<ServiceKind> =
-                args.only.iter().map(|s| s.to_kind()).collect();
-            report
-                .services
-                .retain(|s| allowed.contains(&s.service));
+            let allowed: HashSet<ServiceKind> = args.only.iter().map(|s| s.to_kind()).collect();
+            report.services.retain(|s| allowed.contains(&s.service));
         }
         // Deterministic output: same order every time (table and JSON).
         report.sort_services_canonical();
@@ -180,4 +184,3 @@ async fn main() -> Result<()> {
     }
     Ok(())
 }
-

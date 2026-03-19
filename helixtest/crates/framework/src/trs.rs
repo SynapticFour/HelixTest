@@ -136,7 +136,11 @@ async fn level2_descriptor_retrieval(cfg: &TestConfig, client: &HttpClient) -> T
         }
         let text = resp.text().await?;
         if text.trim().is_empty() {
-            anyhow::bail!("Descriptor for tool {} version {} is empty", tool_id, version_id);
+            anyhow::bail!(
+                "Descriptor for tool {} version {} is empty",
+                tool_id,
+                version_id
+            );
         }
         Ok::<(), anyhow::Error>(())
     }

@@ -37,6 +37,7 @@ pub enum ServiceKind {
     Drs,
     Trs,
     Beacon,
+    Htsget,
     Auth,
     Crypt4gh,
     E2e,
@@ -50,6 +51,7 @@ impl fmt::Display for ServiceKind {
             ServiceKind::Drs => "DRS",
             ServiceKind::Trs => "TRS",
             ServiceKind::Beacon => "Beacon",
+            ServiceKind::Htsget => "htsget",
             ServiceKind::Auth => "Auth",
             ServiceKind::Crypt4gh => "Crypt4GH",
             ServiceKind::E2e => "E2E",
@@ -125,9 +127,10 @@ fn service_order(s: &ServiceKind) -> u8 {
         ServiceKind::Drs => 2,
         ServiceKind::Trs => 3,
         ServiceKind::Beacon => 4,
-        ServiceKind::Auth => 5,
-        ServiceKind::Crypt4gh => 6,
-        ServiceKind::E2e => 7,
+        ServiceKind::Htsget => 5,
+        ServiceKind::Auth => 6,
+        ServiceKind::Crypt4gh => 7,
+        ServiceKind::E2e => 8,
     }
 }
 
@@ -221,8 +224,7 @@ pub struct OverallReport {
 impl OverallReport {
     /// Sort services into canonical order (WES, TES, DRS, …) for deterministic table/JSON output.
     pub fn sort_services_canonical(&mut self) {
-        self.services
-            .sort_by_key(|s| service_order(&s.service));
+        self.services.sort_by_key(|s| service_order(&s.service));
     }
 
     pub fn overall_level(&self) -> ComplianceLevel {
@@ -343,4 +345,3 @@ impl OverallReport {
         OverallCoverageSummary { services }
     }
 }
-

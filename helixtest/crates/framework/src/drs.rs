@@ -270,7 +270,10 @@ async fn level2_range_request(cfg: &TestConfig, client: &HttpClient) -> TestCase
             anyhow::bail!("Range request returned empty body");
         }
         if body.len() > 2048 {
-            anyhow::bail!("Range request returned unexpectedly large body: {} bytes", body.len());
+            anyhow::bail!(
+                "Range request returned unexpectedly large body: {} bytes",
+                body.len()
+            );
         }
 
         Ok::<(), anyhow::Error>(())
@@ -294,18 +297,16 @@ async fn level5_invalid_id_404(cfg: &TestConfig, client: &HttpClient) -> TestCas
         "nonexistent-object-id-for-conformance"
     );
     let res = client.inner().get(&url).send().await;
-    let result = res
-        .map_err(anyhow::Error::from)
-        .and_then(|resp| {
-            if resp.status().as_u16() == 404 {
-                Ok(())
-            } else {
-                Err(anyhow::anyhow!(
-                    "Expected 404 for invalid DRS id, got {}",
-                    resp.status()
-                ))
-            }
-        });
+    let result = res.map_err(anyhow::Error::from).and_then(|resp| {
+        if resp.status().as_u16() == 404 {
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!(
+                "Expected 404 for invalid DRS id, got {}",
+                resp.status()
+            ))
+        }
+    });
 
     TestCaseResult {
         name: "DRS invalid object id returns 404".into(),
@@ -316,4 +317,3 @@ async fn level5_invalid_id_404(cfg: &TestConfig, client: &HttpClient) -> TestCas
         weight: 1.0,
     }
 }
-

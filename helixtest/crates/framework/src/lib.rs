@@ -1,11 +1,13 @@
-pub mod wes;
-pub mod drs;
-pub mod trs;
 pub mod auth;
-pub mod crypt4gh;
-pub mod e2e;
-pub mod tes;
 pub mod beacon;
+pub mod crypt4gh;
+mod crypt4gh_ferrum_http;
+pub mod drs;
+pub mod e2e;
+pub mod htsget;
+pub mod tes;
+pub mod trs;
+pub mod wes;
 
 use common::config::TestConfig;
 use common::http::HttpClient;
@@ -89,15 +91,20 @@ pub async fn run_all(mode: Mode) -> anyhow::Result<OverallReport> {
     let cfg = TestConfig::from_env_or_file()?;
     let client = HttpClient::new();
     let effective_mode = if let Mode::Generic = mode {
-        let url = format!("{}/service-info", cfg.services.wes_url.trim_end_matches('/'));
+        let url = format!(
+            "{}/service-info",
+            cfg.services.wes_url.trim_end_matches('/')
+        );
         if let Ok(v) = client.get_json(&url).await {
-            if v
-                .get("name")
+            if v.get("name")
                 .and_then(|n| n.as_str())
                 .map(|s| s.contains("Ferrum"))
                 .unwrap_or(false)
             {
-                info!(service = "WES", "Detected Ferrum in service-info, switching to Ferrum mode");
+                info!(
+                    service = "WES",
+                    "Detected Ferrum in service-info, switching to Ferrum mode"
+                );
                 Mode::Ferrum
             } else {
                 Mode::Generic
@@ -117,9 +124,9 @@ pub async fn run_all(mode: Mode) -> anyhow::Result<OverallReport> {
     services.push(trs::run_trs_checks(effective_mode, &features, &cfg, &client).await?);
     services.push(tes::run_tes_checks(effective_mode, &features, &cfg, &client).await?);
     services.push(beacon::run_beacon_checks(effective_mode, &features, &cfg, &client).await?);
+    services.push(htsget::run_htsget_checks(effective_mode, &features, &cfg, &client).await?);
     services.push(auth::run_auth_checks(effective_mode, &features, &cfg, &client).await?);
     services.push(crypt4gh::run_crypt4gh_checks(effective_mode, &features, &cfg, &client).await?);
     services.push(e2e::run_e2e_checks(effective_mode, &features, &cfg, &client).await?);
     Ok(OverallReport { services })
 }
-

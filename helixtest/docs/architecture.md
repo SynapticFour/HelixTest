@@ -29,14 +29,15 @@ HelixTest is a Rust workspace that runs conformance tests against GA4GH-complian
 │  • Resolves effective mode (generic vs Ferrum, auto-detect from WES)     │
 │  • Loads features from profiles/<profile>.toml or ferrum.toml             │
 │  • Runs per-service checks in sequence:                                   │
-│    WES → DRS → TRS → TES → Beacon → Auth → Crypt4GH → E2E                │
+│    WES → DRS → TRS → TES → Beacon → htsget → Auth → Crypt4GH → E2E       │
 │  • Returns OverallReport { services: Vec<ServiceReport> }                │
 └─────────────────────────────────────────────────────────────────────────┘
           │                │                │                │
           ▼                ▼                ▼                ▼
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
 │ wes.rs       │  │ drs.rs       │  │ trs.rs       │  │ tes.rs       │
-│ beacon.rs    │  │ auth.rs      │  │ crypt4gh.rs  │  │ e2e.rs       │
+│ beacon.rs    │  │ htsget.rs    │  │ auth.rs      │  │ crypt4gh.rs  │
+│ e2e.rs       │  │              │  │              │  │              │
 └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
           │                │                │                │
           └────────────────┴────────────────┴────────────────┘

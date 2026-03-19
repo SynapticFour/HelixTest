@@ -16,4 +16,3 @@ pub fn init_logging() {
             .init();
     });
 }
-

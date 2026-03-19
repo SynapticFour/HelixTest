@@ -100,14 +100,22 @@ mod tests {
         let server = MockServer::start().await;
         let delay = Duration::from_millis(500);
         Mock::given(method("GET"))
-            .respond_with(ResponseTemplate::new(200).set_delay(delay).set_body_json(serde_json::json!({"ok": true})))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_delay(delay)
+                    .set_body_json(serde_json::json!({"ok": true})),
+            )
             .mount(&server)
             .await;
 
         let client = HttpClient::with_timeout(Duration::from_millis(100));
         let url = format!("{}/", server.uri());
         let res = client.get_json(&url).await;
-        assert!(res.is_err(), "expected error (timeout or retries exhausted), got {:?}", res);
+        assert!(
+            res.is_err(),
+            "expected error (timeout or retries exhausted), got {:?}",
+            res
+        );
         let err = res.unwrap_err().to_string();
         let is_timeout = err.to_lowercase().contains("timeout")
             || err.contains("Timed out")
@@ -144,7 +152,8 @@ mod tests {
                     .set_delay(self.delay)
                     .set_body_json(serde_json::json!({"attempt": n}))
             } else {
-                ResponseTemplate::new(200).set_body_json(serde_json::json!({"ok": true, "attempt": n}))
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"ok": true, "attempt": n}))
             }
         }
     }
@@ -216,4 +225,3 @@ mod tests {
         assert!(err.contains("HTTP 400"), "unexpected error: {}", err);
     }
 }
-

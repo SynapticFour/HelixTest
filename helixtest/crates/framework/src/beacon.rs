@@ -50,10 +50,7 @@ pub async fn run_beacon_checks(
 }
 
 async fn level0_reachable(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
-    let url = format!(
-        "{}/query",
-        cfg.services.beacon_url.trim_end_matches('/')
-    );
+    let url = format!("{}/query", cfg.services.beacon_url.trim_end_matches('/'));
     let res = client
         .inner()
         .post(&url)
@@ -86,10 +83,7 @@ async fn level0_reachable(cfg: &TestConfig, client: &HttpClient) -> TestCaseResu
 
 async fn level1_schema(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
     let res = async {
-        let url = format!(
-            "{}/query",
-            cfg.services.beacon_url.trim_end_matches('/')
-        );
+        let url = format!("{}/query", cfg.services.beacon_url.trim_end_matches('/'));
         let v = client
             .post_json(
                 &url,
@@ -125,19 +119,14 @@ async fn level2_known_variant_exists(
             name: "Beacon known variant exists".into(),
             level: ComplianceLevel::Level2,
             passed: true,
-            error: Some(
-                "Beacon v2 feature disabled (supports_beacon_v2=false in features)".into(),
-            ),
+            error: Some("Beacon v2 feature disabled (supports_beacon_v2=false in features)".into()),
             category: TestCategory::Other,
             weight: 1.0,
         };
     }
 
     let res = async {
-        let url = format!(
-            "{}/query",
-            cfg.services.beacon_url.trim_end_matches('/')
-        );
+        let url = format!("{}/query", cfg.services.beacon_url.trim_end_matches('/'));
         let v = client
             .post_json(
                 &url,
@@ -195,19 +184,14 @@ async fn level2_negative_variant_not_exists(
             name: "Beacon negative variant not exists".into(),
             level: ComplianceLevel::Level2,
             passed: true,
-            error: Some(
-                "Beacon v2 feature disabled (supports_beacon_v2=false in features)".into(),
-            ),
+            error: Some("Beacon v2 feature disabled (supports_beacon_v2=false in features)".into()),
             category: TestCategory::Other,
             weight: 1.0,
         };
     }
 
     let res = async {
-        let url = format!(
-            "{}/query",
-            cfg.services.beacon_url.trim_end_matches('/')
-        );
+        let url = format!("{}/query", cfg.services.beacon_url.trim_end_matches('/'));
         let v = client
             .post_json(
                 &url,

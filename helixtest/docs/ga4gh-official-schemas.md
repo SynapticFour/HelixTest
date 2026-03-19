@@ -21,6 +21,12 @@ This document outlines the changes needed to validate API responses against **of
 - **Loading:** **Tool** and **ToolVersion** schemas are extracted from the resolved OpenAPI (external refs may remain unresolved; in-document schemas are used).
 - **Framework:** TRS Level 1 uses `validate_trs_tool()` for /tools (array items) and `validate_trs_tool_version()` for /tools/{id}/versions (array items).
 
+## Implemented: htsget
+
+- **Vendored:** `helixtest/schemas/ga4gh/htsget-openapi.yaml` (htsget **1.3.0** from [samtools/hts-specs](https://github.com/samtools/hts-specs) `pub/htsget-openapi.yaml`). The upstream `ServiceInfo` `$ref` to GA4GH Discovery is inlined as `Ga4ghService` / `Ga4ghServiceType` so `openapi_deref` works fully offline; `organization.url` allows `null` (Ferrum) via `oneOf` string URI \| null.
+- **Loading:** Same pipeline as WES/TES; compiled schemas: **htsgetServiceInfo**, **htsgetResponseReads**, **htsgetResponseVariants**, **Error**.
+- **Framework:** `framework/src/htsget.rs` calls `validate_htsget_service_info()` for reads/variants service-info (plus endpoint checks: `type.version == 1.3.0`, datatype, BAM / VCF|BCF), `validate_htsget_ticket_reads` / `validate_htsget_ticket_variants` for successful tickets (GET/POST and dataset-auth path), and `validate_htsget_error()` for JSON error bodies where applicable; DRS stream URL on the first ticket URL remains an extra interoperability rule.
+
 ## Current approach (DRS, Beacon)
 
 - **DRS:** Level 1 uses manual field checks in `validate_basic_drs_object()` (id, self_uri, name, access_methods). The official DRS spec is multi-file; full schema validation could be added later by bundling or resolving those refs.
@@ -40,6 +46,7 @@ Validate responses using the **official GA4GH OpenAPI/JSON Schema** artifacts so
 - **TES:** Task Execution Service schemas (search for `ga4gh/task-execution-service-schemas` or equivalent).
 - **DRS:** Data Repository Service schemas (e.g. `ga4gh/data-repository-service-schemas`).
 - **TRS:** Tool Registry Service schemas.
+- **htsget:** [hts-specs](https://github.com/samtools/hts-specs) — `pub/htsget-openapi.yaml`.
 - **Beacon:** Beacon v2 API schemas.
 
 These are typically published as OpenAPI 3.x (YAML/JSON); components may be JSON Schema Draft 4/7 compatible or need a small conversion step.

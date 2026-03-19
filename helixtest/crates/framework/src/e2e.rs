@@ -3,9 +3,7 @@
 use anyhow::Result;
 use common::config::TestConfig;
 use common::http::HttpClient;
-use common::report::{
-    ComplianceLevel, ServiceKind, ServiceReport, TestCategory, TestCaseResult,
-};
+use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCaseResult, TestCategory};
 use common::workflow::{
     fetch_wes_run_output, poll_wes_run_until_terminal, submit_wes_run, WesRunRequest,
 };
@@ -61,7 +59,9 @@ async fn run_e2e_pipeline(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
     let tools = tools_val
         .as_array()
         .ok_or_else(|| anyhow::anyhow!("TRS /tools must return array"))?;
-    let tool = tools.first().ok_or_else(|| anyhow::anyhow!("TRS must expose at least one tool"))?;
+    let tool = tools
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("TRS must expose at least one tool"))?;
     let tool_id = tool
         .get("id")
         .and_then(|v| v.as_str())
@@ -96,7 +96,11 @@ async fn run_e2e_pipeline(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
         .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("DRS object missing id: {}", drs_obj))?;
     if drs_id != drs_object_id {
-        anyhow::bail!("DRS id mismatch: expected {}, got {}", drs_object_id, drs_id);
+        anyhow::bail!(
+            "DRS id mismatch: expected {}, got {}",
+            drs_object_id,
+            drs_id
+        );
     }
 
     let trs_base = Url::parse(&cfg.services.trs_url)?;
@@ -155,7 +159,9 @@ async fn run_e2e_pipeline(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
         .get("access_url")
         .and_then(|a| a.get("url"))
         .and_then(|x| x.as_str())
-        .ok_or_else(|| anyhow::anyhow!("access_methods[0].access_url.url missing: {}", drs_out_obj))?;
+        .ok_or_else(|| {
+            anyhow::anyhow!("access_methods[0].access_url.url missing: {}", drs_out_obj)
+        })?;
 
     let resp = client.inner().get(access_url).send().await?;
     if !resp.status().is_success() {

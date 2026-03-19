@@ -66,4 +66,3 @@ pub fn corrupt_file<P: AsRef<Path>>(path: P) -> Result<()> {
     f.write_all(&data)?;
     Ok(())
 }
-

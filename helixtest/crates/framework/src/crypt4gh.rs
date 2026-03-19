@@ -21,8 +21,8 @@ fn write_dummy_fastq() -> Result<NamedTempFile> {
 pub async fn run_crypt4gh_checks(
     _mode: Mode,
     _features: &Features,
-    _cfg: &TestConfig,
-    _client: &HttpClient,
+    cfg: &TestConfig,
+    client: &HttpClient,
 ) -> Result<ServiceReport> {
     let mut tests = Vec::new();
     tests.push(level5_roundtrip_checksum().await);
@@ -30,6 +30,11 @@ pub async fn run_crypt4gh_checks(
     tests.push(level5_corrupted_header_fails().await);
     tests.push(level5_wrong_key_fails().await);
     tests.push(level5_corrupted_ciphertext_fails().await);
+
+    // Optional Ferrum HTTP: rewrap vs decrypt_plain (gated by env; does not affect default CI).
+    tests.push(crate::crypt4gh_ferrum_http::ferrum_crypt4gh_drs_rewrap(cfg, client).await);
+    tests
+        .push(crate::crypt4gh_ferrum_http::ferrum_crypt4gh_plain_matches_rewrap(cfg, client).await);
 
     Ok(ServiceReport {
         service: ServiceKind::Crypt4gh,

@@ -48,11 +48,7 @@ pub async fn poll_wes_run_until_terminal(
     timeout: Duration,
     poll_interval: Duration,
 ) -> Result<WesRunStatus> {
-    let url = format!(
-        "{}/runs/{}/status",
-        wes_url.trim_end_matches('/'),
-        run_id
-    );
+    let url = format!("{}/runs/{}/status", wes_url.trim_end_matches('/'), run_id);
     let start = std::time::Instant::now();
     let mut states_seen = Vec::new();
     loop {
@@ -167,4 +163,3 @@ pub async fn fetch_wes_run_output(
         .cloned()
         .ok_or_else(|| anyhow::anyhow!("Missing outputs in WES run response: {}", v))
 }
-

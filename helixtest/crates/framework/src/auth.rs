@@ -5,7 +5,7 @@ use chrono::Duration;
 use common::auth::build_jwt;
 use common::config::TestConfig;
 use common::http::HttpClient;
-use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCategory, TestCaseResult};
+use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCaseResult, TestCategory};
 
 use crate::{Features, Mode};
 
@@ -51,12 +51,7 @@ async fn level4_valid_token_grants_access(cfg: &TestConfig, client: &HttpClient)
             cfg.services.drs_url.trim_end_matches('/'),
             auth_test_object_id()
         );
-        let resp = client
-            .inner()
-            .get(&url)
-            .bearer_auth(&token)
-            .send()
-            .await?;
+        let resp = client.inner().get(&url).bearer_auth(&token).send().await?;
         anyhow::ensure!(
             resp.status().is_success(),
             "Valid token should be accepted, got {}",
@@ -91,12 +86,7 @@ async fn level4_expired_token_rejected(cfg: &TestConfig, client: &HttpClient) ->
             cfg.services.drs_url.trim_end_matches('/'),
             auth_test_object_id()
         );
-        let resp = client
-            .inner()
-            .get(&url)
-            .bearer_auth(&token)
-            .send()
-            .await?;
+        let resp = client.inner().get(&url).bearer_auth(&token).send().await?;
         anyhow::ensure!(
             resp.status().is_client_error(),
             "Expired token must be rejected with 4xx, got {}",
@@ -131,12 +121,7 @@ async fn level4_wrong_scope_denied(cfg: &TestConfig, client: &HttpClient) -> Tes
             cfg.services.drs_url.trim_end_matches('/'),
             auth_test_object_id()
         );
-        let resp = client
-            .inner()
-            .get(&url)
-            .bearer_auth(&token)
-            .send()
-            .await?;
+        let resp = client.inner().get(&url).bearer_auth(&token).send().await?;
         anyhow::ensure!(
             resp.status() == 403 || resp.status() == 401,
             "Wrong scope must deny access (403/401), got {}",

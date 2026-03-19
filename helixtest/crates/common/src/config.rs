@@ -16,6 +16,9 @@ pub struct ServiceConfig {
     pub beacon_url: String,
     #[serde(alias = "auth")]
     pub auth_url: String,
+    /// Optional htsget base URL (path prefix `/ga4gh/htsget/v1` is usually included).
+    #[serde(default, alias = "htsget")]
+    pub htsget_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -56,8 +59,9 @@ impl TestConfig {
         // Fallback: default config file name in current directory
         let default_path = Path::new("helixtest-config.toml");
         if default_path.exists() {
-            let data = fs::read_to_string(default_path)
-                .with_context(|| format!("Failed to read config file at {}", default_path.display()))?;
+            let data = fs::read_to_string(default_path).with_context(|| {
+                format!("Failed to read config file at {}", default_path.display())
+            })?;
             let cfg: TestConfig =
                 toml::from_str(&data).context("Failed to parse TOML configuration")?;
             return Ok(cfg);
@@ -65,12 +69,19 @@ impl TestConfig {
 
         Ok(Self {
             services: ServiceConfig {
-                wes_url: env::var("WES_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()),
-                tes_url: env::var("TES_URL").unwrap_or_else(|_| "http://localhost:8081".to_string()),
-                drs_url: env::var("DRS_URL").unwrap_or_else(|_| "http://localhost:8082".to_string()),
-                trs_url: env::var("TRS_URL").unwrap_or_else(|_| "http://localhost:8083".to_string()),
-                beacon_url: env::var("BEACON_URL").unwrap_or_else(|_| "http://localhost:8084".to_string()),
-                auth_url: env::var("AUTH_URL").unwrap_or_else(|_| "http://localhost:8085".to_string()),
+                wes_url: env::var("WES_URL")
+                    .unwrap_or_else(|_| "http://localhost:8080".to_string()),
+                tes_url: env::var("TES_URL")
+                    .unwrap_or_else(|_| "http://localhost:8081".to_string()),
+                drs_url: env::var("DRS_URL")
+                    .unwrap_or_else(|_| "http://localhost:8082".to_string()),
+                trs_url: env::var("TRS_URL")
+                    .unwrap_or_else(|_| "http://localhost:8083".to_string()),
+                beacon_url: env::var("BEACON_URL")
+                    .unwrap_or_else(|_| "http://localhost:8084".to_string()),
+                auth_url: env::var("AUTH_URL")
+                    .unwrap_or_else(|_| "http://localhost:8085".to_string()),
+                htsget_url: env::var("HTSGET_URL").ok().filter(|s| !s.trim().is_empty()),
             },
         })
     }
@@ -94,6 +105,7 @@ mod tests {
             "TRS_URL",
             "BEACON_URL",
             "AUTH_URL",
+            "HTSGET_URL",
         ] {
             env::remove_var(k);
         }
@@ -165,4 +177,3 @@ auth_url = "http://file-auth"
         );
     }
 }
-

@@ -45,10 +45,7 @@ fn partial_read_returns_prefix_bytes() -> Result<()> {
     let _enc_checksum = encrypt_file(&input_path, &enc_path, pass)?;
 
     let partial = decrypt_partial(&enc_path, pass, 16)?;
-    assert!(
-        !partial.is_empty(),
-        "Partial decrypt must return some data"
-    );
+    assert!(!partial.is_empty(), "Partial decrypt must return some data");
     Ok(())
 }
 
@@ -159,4 +156,3 @@ fn streaming_decryption_compatible() -> Result<()> {
 
     Ok(())
 }
-

@@ -37,4 +37,3 @@ pub fn assert_required_string_field(value: &Value, field: &str) -> anyhow::Resul
         anyhow::bail!("Field `{}` is not a string: {}", field, v);
     }
 }
-
