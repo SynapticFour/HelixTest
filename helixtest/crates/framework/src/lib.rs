@@ -11,7 +11,10 @@ pub mod wes;
 
 use common::config::TestConfig;
 use common::http::HttpClient;
-use common::report::{OverallReport, ServiceKind, ServiceReport, SkippedService};
+use common::report::{
+    ComplianceLevel, OverallReport, ServiceKind, ServiceReport, SkippedService, TestCaseResult,
+    TestCategory,
+};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs;
@@ -204,7 +207,14 @@ pub async fn run_all(mode: Mode, only: Option<HashSet<ServiceKind>>) -> anyhow::
                 if matches!(effective_mode, Mode::Ferrum) && skip_auth {
                     ServiceReport {
                         service: ServiceKind::Auth,
-                        tests: Vec::new(),
+                        tests: vec![TestCaseResult {
+                            name: "Auth suite skipped (HELIXTEST_SKIP_AUTH=true)".to_string(),
+                            level: ComplianceLevel::Level1,
+                            passed: true,
+                            error: Some("skipped: HELIXTEST_SKIP_AUTH=true in Ferrum mode".to_string()),
+                            category: TestCategory::Security,
+                            weight: 1.0,
+                        }],
                     }
                 } else {
                     auth::run_auth_checks(effective_mode, &features, &cfg, &client).await?
