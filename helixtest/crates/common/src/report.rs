@@ -119,6 +119,12 @@ pub struct ServiceReport {
     pub tests: Vec<TestCaseResult>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct SkippedService {
+    pub service: ServiceKind,
+    pub reason: String,
+}
+
 /// Canonical order for deterministic report output (table, JSON).
 fn service_order(s: &ServiceKind) -> u8 {
     match s {
@@ -219,6 +225,12 @@ pub struct OverallCoverageSummary {
 #[derive(Debug, Clone, Serialize)]
 pub struct OverallReport {
     pub services: Vec<ServiceReport>,
+    #[serde(default)]
+    pub enabled_services: Vec<ServiceKind>,
+    #[serde(default)]
+    pub skipped_services: Vec<SkippedService>,
+    #[serde(default)]
+    pub executed_test_modules: Vec<ServiceKind>,
 }
 
 impl OverallReport {
@@ -244,6 +256,33 @@ impl OverallReport {
 
     pub fn to_table(&self) -> String {
         let mut out = String::new();
+        if !self.enabled_services.is_empty() {
+            let enabled = self
+                .enabled_services
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            out.push_str(&format!("Enabled services: {}\n", enabled));
+        }
+        if !self.skipped_services.is_empty() {
+            let skipped = self
+                .skipped_services
+                .iter()
+                .map(|s| format!("{} ({})", s.service, s.reason))
+                .collect::<Vec<_>>()
+                .join(", ");
+            out.push_str(&format!("Skipped services: {}\n", skipped));
+        }
+        if !self.executed_test_modules.is_empty() {
+            let executed = self
+                .executed_test_modules
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            out.push_str(&format!("Executed modules: {}\n\n", executed));
+        }
         out.push_str("Service   Level   Details\n");
         out.push_str("=======   =====   =======\n");
         let mut services: Vec<_> = self.services.iter().collect();
@@ -343,5 +382,27 @@ impl OverallReport {
         }
 
         OverallCoverageSummary { services }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn table_includes_subset_metadata_sections() {
+        let report = OverallReport {
+            services: vec![],
+            enabled_services: vec![ServiceKind::Wes, ServiceKind::Drs],
+            skipped_services: vec![SkippedService {
+                service: ServiceKind::Tes,
+                reason: "skipped by profile".to_string(),
+            }],
+            executed_test_modules: vec![ServiceKind::Wes, ServiceKind::Drs],
+        };
+        let table = report.to_table();
+        assert!(table.contains("Enabled services:"));
+        assert!(table.contains("Skipped services:"));
+        assert!(table.contains("Executed modules:"));
     }
 }

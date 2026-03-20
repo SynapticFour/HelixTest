@@ -75,6 +75,10 @@ struct Args {
     #[arg(long)]
     start_ferrum: bool,
 
+    /// Profile name from `helixtest/profiles/<name>.toml`
+    #[arg(long)]
+    profile: Option<String>,
+
     /// Report format (table, json, or scores)
     #[arg(long, value_enum, default_value_t = ReportFormat::Table)]
     report: ReportFormat,
@@ -99,6 +103,9 @@ async fn main() -> Result<()> {
     // Configure logging verbosity before initializing tracing.
     if args.verbose && std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "debug,helixtest=debug");
+    }
+    if let Some(profile) = &args.profile {
+        std::env::set_var("HELIXTEST_PROFILE", profile);
     }
     init_logging();
     if args.all {
@@ -131,15 +138,14 @@ async fn main() -> Result<()> {
         };
 
         info!(mode = ?args.mode, "Running HelixTest conformance suite");
-        let mut report = run_all(framework_mode)
+        let only = if args.only.is_empty() {
+            None
+        } else {
+            Some(args.only.iter().map(|s| s.to_kind()).collect::<HashSet<_>>())
+        };
+        let mut report = run_all(framework_mode, only)
             .await
             .context("HelixTest conformance run failed (check config and service URLs)")?;
-
-        // Optionally filter services in the final report (we still run all tests).
-        if !args.only.is_empty() {
-            let allowed: HashSet<ServiceKind> = args.only.iter().map(|s| s.to_kind()).collect();
-            report.services.retain(|s| allowed.contains(&s.service));
-        }
         // Deterministic output: same order every time (table and JSON).
         report.sort_services_canonical();
 

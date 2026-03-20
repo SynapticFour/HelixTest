@@ -1,0 +1,33 @@
+# Subset profile for SynapticFour/bioresearch-assistant.
+# Focus: WES + DRS + token-protected endpoint auth checks.
+
+[services]
+# Override via env: WES_URL, DRS_URL.
+wes = "http://localhost:8080/ga4gh/wes/v1"
+drs = "http://localhost:8080/ga4gh/drs/v1"
+
+# Kept for compatibility; explicitly disabled in [subset].
+tes = ""
+trs = ""
+beacon = ""
+auth = ""
+# Optional: HTSGET_URL can still override if needed.
+htsget = ""
+
+[subset]
+enabled_services = ["wes", "drs", "auth"]
+disabled_services = ["tes", "trs", "beacon", "htsget", "crypt4gh", "e2e"]
+
+[auth_checks]
+mode = "token-protected-endpoints"
+# Env var containing a valid bearer token.
+valid_token_env = "TEST_BEARER"
+# Optional static invalid token used for negative checks.
+invalid_token = "helixtest-invalid-token"
+
+# Configure protected endpoints that require bearer token.
+[[auth_checks.protected_endpoints]]
+name = "DRS object fetch"
+url = "http://localhost:8080/ga4gh/drs/v1/objects/test-object-1"
+method = "GET"
+check_invalid_token = true

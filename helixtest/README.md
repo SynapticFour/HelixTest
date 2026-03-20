@@ -82,6 +82,7 @@ For full details (levels, scores, coverage matrix), see **[docs/scoring.md](docs
 ### Configuration
 
 Configuration is loaded from a TOML file or environment variables.
+For subset/platform-specific runs (for example WES+DRS only), see [docs/subset-profiles.md](docs/subset-profiles.md).
 
 #### TOML config (recommended)
 
@@ -154,7 +155,7 @@ From the repository root (or the `helixtest` directory):
 cargo run --bin helixtest -- --all
 ```
 
-**Options:** `--report table|json|scores|coverage` (default: table), `--mode generic|ferrum`, `--start-ferrum`, `--fail-level <N>`, `--only <service>` (repeatable: `wes`, `tes`, `drs`, `trs`, `beacon`, `htsget`, `auth`, `crypt4gh`, `e2e`), `--verbose`.
+**Options:** `--report table|json|scores|coverage` (default: table), `--mode generic|ferrum`, `--profile <name>`, `--start-ferrum`, `--fail-level <N>`, `--only <service>` (repeatable: `wes`, `tes`, `drs`, `trs`, `beacon`, `htsget`, `auth`, `crypt4gh`, `e2e`), `--verbose`.
 
 **Examples:**
 
@@ -164,7 +165,10 @@ cargo run --bin helixtest -- --all --report json > helix-report.json
 cargo run --bin helixtest -- --all --report scores
 cargo run --bin helixtest -- --all --fail-level 3
 cargo run --bin helixtest -- --all --mode ferrum --start-ferrum
+cargo run --bin helixtest -- --all --profile bioresearch-assistant --report json
 ```
+
+When a profile declares enabled/disabled services, HelixTest executes only enabled modules. The report explicitly lists enabled services, skipped services (`skipped by profile or --only filter`), and executed test modules.
 
 **Exit codes:** `0` – all tests passed (and overall level ≥ `--fail-level` if set). `1` – at least one test failed or level below `--fail-level`.
 
