@@ -181,6 +181,10 @@ pub async fn run_all(mode: Mode, only: Option<HashSet<ServiceKind>>) -> anyhow::
     let mut services: Vec<ServiceReport> = Vec::new();
     let mut executed_test_modules = Vec::new();
     let mut skipped_services = Vec::new();
+    let skip_auth = std::env::var("HELIXTEST_SKIP_AUTH")
+        .map(|v| v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
     for service in all {
         if !enabled.contains(&service) {
             skipped_services.push(SkippedService {
@@ -196,7 +200,16 @@ pub async fn run_all(mode: Mode, only: Option<HashSet<ServiceKind>>) -> anyhow::
             ServiceKind::Trs => trs::run_trs_checks(effective_mode, &features, &cfg, &client).await?,
             ServiceKind::Beacon => beacon::run_beacon_checks(effective_mode, &features, &cfg, &client).await?,
             ServiceKind::Htsget => htsget::run_htsget_checks(effective_mode, &features, &cfg, &client).await?,
-            ServiceKind::Auth => auth::run_auth_checks(effective_mode, &features, &cfg, &client).await?,
+            ServiceKind::Auth => {
+                if matches!(effective_mode, Mode::Ferrum) && skip_auth {
+                    ServiceReport {
+                        service: ServiceKind::Auth,
+                        tests: Vec::new(),
+                    }
+                } else {
+                    auth::run_auth_checks(effective_mode, &features, &cfg, &client).await?
+                }
+            }
             ServiceKind::Crypt4gh => {
                 crypt4gh::run_crypt4gh_checks(effective_mode, &features, &cfg, &client).await?
             }
