@@ -222,6 +222,25 @@ pub struct OverallCoverageSummary {
     pub services: Vec<ServiceCoverageSummary>,
 }
 
+/// Optional run diagnostics for JSON consumers. **Never** used for compliance levels or scores.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReportDiagnostics {
+    /// Wall-clock duration of the CLI conformance run (milliseconds).
+    pub suite_duration_ms: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
+/// `true` if `HELIXTEST_REPORT_DIAGNOSTICS` is `1` or `true` (case-insensitive).
+pub fn report_diagnostics_requested() -> bool {
+    std::env::var("HELIXTEST_REPORT_DIAGNOSTICS")
+        .map(|v| {
+            let t = v.trim();
+            t.eq_ignore_ascii_case("true") || t == "1"
+        })
+        .unwrap_or(false)
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct OverallReport {
     pub services: Vec<ServiceReport>,
@@ -231,6 +250,9 @@ pub struct OverallReport {
     pub skipped_services: Vec<SkippedService>,
     #[serde(default)]
     pub executed_test_modules: Vec<ServiceKind>,
+    /// Present only when `HELIXTEST_REPORT_DIAGNOSTICS` is enabled; omitted from JSON otherwise.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagnostics: Option<ReportDiagnostics>,
 }
 
 impl OverallReport {
@@ -399,6 +421,7 @@ mod tests {
                 reason: "skipped by profile".to_string(),
             }],
             executed_test_modules: vec![ServiceKind::Wes, ServiceKind::Drs],
+            diagnostics: None,
         };
         let table = report.to_table();
         assert!(table.contains("Enabled services:"));

@@ -1,3 +1,13 @@
+//! WES run submission and status polling helpers.
+//!
+//! **Conformance semantics (not performance):** Polling continues until the WES `/runs/{id}/status`
+//! response reports a **terminal** state (`COMPLETE`, `EXECUTOR_ERROR`, `SYSTEM_ERROR`, `CANCELED`)
+//! or until a **timeout** elapses. Between polls, the implementation may report any valid
+//! non-terminal state (`QUEUED`, `INITIALIZING`, `RUNNING`, or implementation-specific states we
+//! treat as forward progress). This does **not** require other backends (e.g. TES) to be terminal
+//! while WES is still `RUNNING`—only the WES API contract is asserted here. Success for a run is
+//! determined by the **final** terminal state and (in tests) outputs, not by wall-clock duration.
+
 use crate::http::HttpClient;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -41,6 +51,11 @@ pub async fn submit_wes_run(
     Ok(run_id.to_owned())
 }
 
+/// Poll WES `/runs/{id}/status` until a terminal state or `timeout`.
+///
+/// Intermediate non-terminal states may repeat; transitions must be monotonic in phase order
+/// (validated when a terminal state is observed). **Canonical success** for callers is: terminal state
+/// `COMPLETE` plus expected outputs—handled in each test, not inside this function.
 pub async fn poll_wes_run_until_terminal(
     client: &HttpClient,
     wes_url: &str,

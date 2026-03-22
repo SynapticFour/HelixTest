@@ -1,4 +1,10 @@
-//! E2E interoperability: TRS → DRS → WES → TES → DRS → Beacon pipeline.
+//! Cross-service interoperability checks (Level 3): TRS → DRS → WES → DRS output → Beacon.
+//!
+//! **Scope:** This module drives WES to **terminal `COMPLETE`** via `common::workflow::poll_wes_run_until_terminal`
+//! (non-terminal WES states are allowed until then). It does **not** poll TES: coupling WES run id
+//! to TES task id is deployment-specific. Full TRS→…→TES coupling lives in the `e2e-tests` crate
+//! where the mock stack defines that contract. **No wall-time or throughput assertions**—only
+//! GA4GH-shaped responses and checksum correctness where applicable.
 
 use anyhow::Result;
 use common::config::TestConfig;
@@ -44,7 +50,7 @@ async fn e2e_trs_drs_wes_tes_drs_beacon_pipeline(
 ) -> TestCaseResult {
     let result = run_e2e_pipeline(cfg, client).await;
     TestCaseResult {
-        name: "E2E TRS→DRS→WES→TES→DRS→Beacon pipeline".into(),
+        name: "E2E TRS→DRS→WES→DRS output→Beacon (WES polled to terminal; no TES poll in this module)".into(),
         level: ComplianceLevel::Level3,
         passed: result.is_ok(),
         error: result.err().map(|e| e.to_string()),

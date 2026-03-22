@@ -123,7 +123,9 @@ async fn level2_task_lifecycle_and_checksum(
 
         info!(%task_id, "Submitted TES task for lifecycle + checksum test");
 
-        // Poll task until terminal
+        // Poll until TES reports a terminal state. Non-terminal states (e.g. QUEUED, RUNNING,
+        // INITIALIZING per implementation) are expected between polls—this is lifecycle conformance,
+        // not a latency or throughput gate. Success is defined by final `COMPLETE` + checksum.
         let status_url = format!(
             "{}/tasks/{}",
             cfg.services.tes_url.trim_end_matches('/'),
@@ -191,7 +193,7 @@ async fn level2_task_lifecycle_and_checksum(
     .await;
 
     TestCaseResult {
-        name: "TES task lifecycle + checksum".into(),
+        name: "TES task lifecycle + checksum (non-terminal states allowed until terminal)".into(),
         level: ComplianceLevel::Level2,
         passed: res.is_ok(),
         error: res.err().map(|e| e.to_string()),

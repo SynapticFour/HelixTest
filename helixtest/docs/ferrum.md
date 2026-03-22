@@ -83,9 +83,22 @@ Using `HELIXTEST_PROFILE=ferrum` is equivalent for feature/endpoint loading and 
 - TES task lifecycle and output checksums.
 - Beacon v2 (if enabled by profile).
 - Auth (Level 4) and Crypt4GH (Level 5) when endpoints are configured.
-- E2E pipeline: TRS → DRS → WES → TES → DRS → Beacon.
+- E2E (framework): TRS → DRS → WES (polled to terminal) → DRS output → Beacon — see `framework/src/e2e.rs` (TES polling is mock-specific in the `e2e-tests` crate).
 
 See the main [README](../README.md) and [architecture](architecture.md) for full scope.
+
+## Optional JSON diagnostics (not scored)
+
+Set `HELIXTEST_REPORT_DIAGNOSTICS=true` (or `1`) when running `--report json` to include e.g. `suite_duration_ms` under `diagnostics`. This is **troubleshooting only**; `--fail-level` and scores still use only test pass/fail and levels. See [conformance-philosophy.md](conformance-philosophy.md).
+
+## Rough resources (single-host Ferrum-style stack)
+
+Typical order of magnitude when running **full** `--all` against a local gateway with WES/Cromwell, TES, DRS, etc.:
+
+- **RAM:** ~8–16 GiB available for services + HelixTest client (more if Cromwell + multiple workers).
+- **Disk:** ~20+ GiB for container layers, workflow outputs, and test data (varies with workflows).
+
+Use [subset-profiles.md](subset-profiles.md) for **narrower** `--only` combinations in PR CI — still **conformance**, not a “fast benchmark” mode.
 
 ---
 

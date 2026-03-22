@@ -4,6 +4,8 @@
 
 HelixTest is a Rust-based conformance framework for GA4GH APIs and workflow platforms. It focuses on strict validation, cross-service interoperability, and security/robustness. It is **CI-ready** (exit codes, JSON reports, `--fail-level`), **usable by any GA4GH-compliant platform** (config-driven endpoints, profiles), and suitable as a **reference conformance suite** for the GA4GH ecosystem: test cases and compliance levels align with GA4GH service specifications and can be used as a reference when building or validating compliant implementations.
 
+**Non-goal:** HelixTest is **not** a performance benchmark suite. Pass/fail and `--fail-level` reflect **spec conformance**, not wall-time, throughput, or latency. Optional JSON diagnostics (e.g. `HELIXTEST_REPORT_DIAGNOSTICS`) are for troubleshooting only and do **not** affect levels or scores. See **[docs/conformance-philosophy.md](docs/conformance-philosophy.md)**.
+
 HelixTest currently targets:
 
 - **WES** – Workflow Execution Service
@@ -156,6 +158,8 @@ cargo run --bin helixtest -- --all
 ```
 
 **Options:** `--report table|json|scores|coverage` (default: table), `--mode generic|ferrum`, `--profile <name>`, `--start-ferrum`, `--fail-level <N>`, `--only <service>` (repeatable: `wes`, `tes`, `drs`, `trs`, `beacon`, `htsget`, `auth`, `crypt4gh`, `e2e`), `--verbose`.
+
+**Optional JSON diagnostics (not scored):** `HELIXTEST_REPORT_DIAGNOSTICS=true` or `1` adds fields such as `suite_duration_ms` to the full JSON report (`--report json`); compliance levels and scores are unchanged.
 
 **Examples:**
 

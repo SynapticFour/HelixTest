@@ -1,12 +1,12 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use common::logging::init_logging;
-use common::report::ServiceKind;
+use common::report::{report_diagnostics_requested, ReportDiagnostics, ServiceKind};
 use framework::{run_all, Mode as FrameworkMode};
 use std::collections::HashSet;
 use std::process::Command;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tracing::info;
 
 #[derive(clap::ValueEnum, Debug, Clone)]
@@ -143,9 +143,19 @@ async fn main() -> Result<()> {
         } else {
             Some(args.only.iter().map(|s| s.to_kind()).collect::<HashSet<_>>())
         };
+        let run_started = Instant::now();
         let mut report = run_all(framework_mode, only)
             .await
             .context("HelixTest conformance run failed (check config and service URLs)")?;
+        if report_diagnostics_requested() {
+            report.diagnostics = Some(ReportDiagnostics {
+                suite_duration_ms: run_started.elapsed().as_millis() as u64,
+                note: Some(
+                    "Diagnostics (e.g. suite_duration_ms) are not used for compliance levels or scores; set HELIXTEST_REPORT_DIAGNOSTICS only for troubleshooting."
+                        .into(),
+                ),
+            });
+        }
         // Deterministic output: same order every time (table and JSON).
         report.sort_services_canonical();
 

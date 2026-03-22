@@ -245,6 +245,7 @@ pub async fn run_all(mode: Mode, only: Option<HashSet<ServiceKind>>) -> anyhow::
         enabled_services,
         skipped_services,
         executed_test_modules,
+        diagnostics: None,
     })
 }
 

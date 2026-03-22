@@ -133,12 +133,17 @@ async fn level2_lifecycle_success(cfg: &TestConfig, client: &HttpClient) -> Test
                 status.states_history
             );
         }
-        // Ensure we saw at least QUEUED and RUNNING along the way
-        let saw_queued = status.states_history.iter().any(|s| s == "QUEUED");
-        let saw_running = status.states_history.iter().any(|s| s == "RUNNING");
-        if !saw_queued || !saw_running {
+        // GA4GH WES: allow any spec-typical pre-terminal state before COMPLETE (implementations may
+        // skip QUEUED if transitions are fast, or use INITIALIZING without exposing QUEUED).
+        let saw_pre_terminal = status.states_history.iter().any(|s| {
+            matches!(
+                s.as_str(),
+                "QUEUED" | "INITIALIZING" | "RUNNING"
+            )
+        });
+        if !saw_pre_terminal {
             anyhow::bail!(
-                "WES lifecycle for success run must include QUEUED and RUNNING; got {:?}",
+                "WES lifecycle for success run must include at least one of QUEUED, INITIALIZING, RUNNING before COMPLETE; got {:?}",
                 status.states_history
             );
         }
@@ -154,7 +159,7 @@ async fn level2_lifecycle_success(cfg: &TestConfig, client: &HttpClient) -> Test
     }
     .await;
     TestCaseResult {
-        name: "WES lifecycle success echo".into(),
+        name: "WES lifecycle success echo (API may show QUEUED/INITIALIZING/RUNNING before COMPLETE)".into(),
         level: ComplianceLevel::Level2,
         passed: result.is_ok(),
         error: result.err().map(|e| e.to_string()),
