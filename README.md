@@ -10,7 +10,7 @@ Implemented test areas:
 - **Authorization tests** for GA4GH Passports / OIDC-style flows
 - **Cryptographic tests** for Crypt4GH-style encryption (backed by `age` as a pluggable engine)
 
-See `helixtest/README.md` for full details and usage.
+See `helixtest/README.md` for full details and usage. For **Ferrum**: HelixTest is the conformance runner; **noop TES** is the usual CI default — **Docker TES** for demos is described in `helixtest/docs/adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md`.
 
 **Disclaimer:** This software is provided as is, without warranty. Test results do not constitute official GA4GH certification. See [LICENSE](LICENSE) for full terms.
 

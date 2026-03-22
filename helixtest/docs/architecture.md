@@ -6,6 +6,8 @@ This document describes the high-level architecture of the HelixTest GA4GH confo
 
 HelixTest is a Rust workspace that runs conformance tests against GA4GH-compliant services. The **CLI** orchestrates a **framework** that executes per-service checks and E2E pipelines; shared logic lives in **common**. Configuration and profiles drive endpoints and feature flags.
 
+**Cross-repo / operator notes** (e.g. Ferrum noop vs Docker TES, DB init): see [ADR index](adr/).
+
 ## Architecture Diagram
 
 ```

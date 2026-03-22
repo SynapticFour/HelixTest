@@ -2,6 +2,8 @@
 
 This guide describes how to run the HelixTest conformance suite against **Ferrum**, a Rust-based GA4GH platform.
 
+**HelixTest** (this repo) is the **automated conformance suite**; it does not choose Ferrum’s TES backend. Synaptic Four **CI** typically runs Ferrum with **noop TES** for speed; **GA4GH demos** and serious self-hosts often need **Docker TES** with extra env and compose wiring. See **[ADR 0001: Ferrum TES & DB init](adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md)** for the split, env reference, and **`ferrum-init` / Postgres volume** expectations (including when `docker compose down -v` is required).
+
 ## Quick start
 
 1. **Use the Ferrum profile** (endpoints + feature flags):
@@ -80,7 +82,7 @@ Using `HELIXTEST_PROFILE=ferrum` is equivalent for feature/endpoint loading and 
 ## What is exercised
 
 - WES lifecycle, TRS-based workflows, DRS access and checksums, **htsget 1.3.0** (service-info, GET/POST tickets, DRS stream URLs, error codes) on the gateway profile.
-- TES task lifecycle and output checksums.
+- TES task lifecycle and output checksums (against whatever TES backend Ferrum exposes — **noop** in light CI, **Docker TES** for real execution; see ADR 0001).
 - Beacon v2 (if enabled by profile).
 - Auth (Level 4) and Crypt4GH (Level 5) when endpoints are configured.
 - E2E (framework): TRS → DRS → WES (polled to terminal) → DRS output → Beacon — see `framework/src/e2e.rs` (TES polling is mock-specific in the `e2e-tests` crate).

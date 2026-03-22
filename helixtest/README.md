@@ -17,7 +17,7 @@ HelixTest currently targets:
 - **GA4GH Passports / AAI / OIDC**
 - **Crypt4GH-style encryption** (local `age`-based checks; optional Ferrum DRS **rewrap** / **decrypt_plain** via the GA4GH `crypt4gh` crate)
 
-For Ferrum-specific guidance, see the dedicated document: [docs/ferrum.md](docs/ferrum.md).
+For Ferrum-specific guidance, see the dedicated document: [docs/ferrum.md](docs/ferrum.md). **CI vs full stack:** HelixTest against Ferrum in CI usually assumes **noop TES**; Docker TES and DB init semantics are documented in [docs/adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md](docs/adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md).
 
 ---
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Docs: [ADR 0001](adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md) — Ferrum **noop TES (CI / HelixTest defaults)** vs **Docker TES (demos)**; TES env reference; **`ferrum-init` / Postgres** reset expectations. Linked from [ferrum.md](ferrum.md) and READMEs.
+
 - Add first-class subset conformance support:
   - profile-driven enabled/disabled service gating
   - explicit report metadata for enabled/skipped/executed modules
