@@ -12,11 +12,13 @@ Implemented test areas:
 
 See `helixtest/README.md` for full details and usage. For **Ferrum**: HelixTest is the conformance runner; **noop TES** is the usual CI default — **Docker TES** for demos is described in `helixtest/docs/adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md`.
 
+> **Legal notice:** This repository documents technical capabilities and operating guidance. It is not legal advice and does not by itself provide regulatory certification or compliance guarantees. Compliance outcomes depend on operator configuration, contracts, and organisational controls.
+
 **Disclaimer:** This software is provided as is, without warranty. Test results do not constitute official GA4GH certification. See [LICENSE](LICENSE) for full terms.
 
 ---
 
-**Synaptic Four** — Built with ❤️ for the open science community. Implementing GA4GH open standards for sovereign bioinformatics infrastructure. Proudly developed by individuals on the autism spectrum in Germany. We build tools that are precise, thorough, and designed to work exactly as documented.  
-© 2025 Synaptic Four · Licensed under [Apache-2.0](LICENSE).  
+Built by **Synaptic Four** for transparent, standards-based scientific infrastructure.
+Developed by a neurodiverse team, including autistic engineers, with a focus on precision, clarity, and reliable operations.
 Contact: [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com)
 
