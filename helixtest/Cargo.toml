@@ -28,7 +28,7 @@ schemars = "0.8"
 jsonschema = "0.17"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
-sha2 = "0.10"
+sha2 = "0.11"
 oauth2 = "4"
 openidconnect = "3"
 async-trait = "0.1"
