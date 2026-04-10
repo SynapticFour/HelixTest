@@ -15,7 +15,7 @@ jsonschema = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 sha2 = { workspace = true }
-hmac = "0.12"
+hmac = "0.13"
 oauth2 = { workspace = true }
 openidconnect = { workspace = true }
 async-trait = { workspace = true }
