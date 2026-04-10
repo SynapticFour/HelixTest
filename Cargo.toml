@@ -29,7 +29,7 @@ jsonschema = "0.17"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 sha2 = "0.10"
-oauth2 = "4"
+oauth2 = "5"
 openidconnect = "3"
 async-trait = "0.1"
 url = "2"
