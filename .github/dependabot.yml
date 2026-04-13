@@ -3,55 +3,28 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      github_actions_all:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-  - package-ecosystem: "cargo"
-    directory: "/helixtest"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-  - package-ecosystem: "cargo"
-    directory: "/helixtest/crates/framework"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-  - package-ecosystem: "cargo"
-    directory: "/helixtest/crates/auth-tests"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-  - package-ecosystem: "cargo"
-    directory: "/helixtest/crates/workflow-tests"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-  - package-ecosystem: "cargo"
-    directory: "/helixtest/crates/cli"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-  - package-ecosystem: "cargo"
-    directory: "/helixtest/crates/e2e-tests"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-  - package-ecosystem: "cargo"
-    directory: "/helixtest/crates/common"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-  - package-ecosystem: "cargo"
-    directory: "/helixtest/crates/api-tests"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-  - package-ecosystem: "cargo"
-    directory: "/helixtest/crates/crypt4gh-tests"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      cargo_all:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
