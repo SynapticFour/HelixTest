@@ -2,6 +2,8 @@
 
 This repository is **HelixTest**, a Rust-based conformance and integration test suite for GA4GH-style platforms. The project and CLI are named HelixTest; the binary is `helixtest`.
 
+Scope boundary: HelixTest remains **GA4GH-focused**. MII/KDS checks are intentionally handled in Ferrum/Ferrum-Lab-Kit integration layers, not in this suite.
+
 Implemented test areas:
 
 - **API contract tests** for WES, TES, DRS, TRS, Beacon v2
