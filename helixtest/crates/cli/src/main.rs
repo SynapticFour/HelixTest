@@ -53,14 +53,14 @@ impl ServiceArg {
 }
 
 const BANNER: &str = "🧬 HelixTest — GA4GH Conformance Suite";
-const CREDIT: &str = "Built with ❤️ by Synaptic Four · Apache-2.0";
+const CREDIT: &str = "Synaptic Four · Apache-2.0";
 
 #[derive(Parser, Debug)]
 #[command(name = "helixtest")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "HelixTest — GA4GH Conformance Suite")]
 #[command(
-    after_help = "Synaptic Four — Built with ❤️ for the open science community. GA4GH open standards for sovereign bioinformatics. Proudly developed by individuals on the autism spectrum in Germany. © 2025 Synaptic Four · Apache-2.0. Contact: contact@synapticfour.com · synapticfour.com"
+    after_help = "Synaptic Four · Apache-2.0 · Contact: contact@synapticfour.com · synapticfour.com"
 )]
 struct Args {
     /// Run full HelixTest conformance suite
@@ -141,7 +141,12 @@ async fn main() -> Result<()> {
         let only = if args.only.is_empty() {
             None
         } else {
-            Some(args.only.iter().map(|s| s.to_kind()).collect::<HashSet<_>>())
+            Some(
+                args.only
+                    .iter()
+                    .map(|s| s.to_kind())
+                    .collect::<HashSet<_>>(),
+            )
         };
         let run_started = Instant::now();
         let mut report = run_all(framework_mode, only)

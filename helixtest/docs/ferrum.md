@@ -86,6 +86,8 @@ Using `HELIXTEST_PROFILE=ferrum` is equivalent for feature/endpoint loading and 
 - Beacon v2 (if enabled by profile).
 - Auth (Level 4) and Crypt4GH (Level 5) when endpoints are configured.
 - E2E (framework): TRS → DRS → WES (polled to terminal) → DRS output → Beacon — see `framework/src/e2e.rs` (TES polling is mock-specific in the `e2e-tests` crate).
+  - E2E is **DRS-first by default**: workflow input is passed as `input_drs_uri`, preferring `drs://...` references.
+  - Other WES test groups are intentionally not forced to DRS input references; they keep API/lifecycle focus where that is the primary intent.
 
 See the main [README](../README.md) and [architecture](architecture.md) for full scope.
 

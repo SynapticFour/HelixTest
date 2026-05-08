@@ -105,7 +105,9 @@ async fn run_token_protected_endpoint_checks(
         .valid_token_env
         .clone()
         .unwrap_or_else(|| "TEST_BEARER".to_string());
-    let valid_token = std::env::var(&token_env).ok().filter(|s| !s.trim().is_empty());
+    let valid_token = std::env::var(&token_env)
+        .ok()
+        .filter(|s| !s.trim().is_empty());
     let invalid_token = cfg
         .auth_checks
         .invalid_token

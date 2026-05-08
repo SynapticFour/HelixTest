@@ -18,6 +18,17 @@ fn test_data_dir() -> PathBuf {
         .join("test-data")
 }
 
+fn preferred_drs_input_uri(drs_obj: &Value, drs_id: &str) -> String {
+    // E2E policy: use DRS URI by default. If service returns a self_uri, accept it only
+    // when it is already a drs:// URI; otherwise fall back to canonical drs://<id>.
+    if let Some(self_uri) = drs_obj.get("self_uri").and_then(|v| v.as_str()) {
+        if self_uri.starts_with("drs://") {
+            return self_uri.to_string();
+        }
+    }
+    format!("drs://{}", drs_id)
+}
+
 #[tokio::test]
 async fn full_trs_drs_wes_tes_beacon_pipeline() -> Result<()> {
     let cfg = TestConfig::from_env_or_file()?;
@@ -82,7 +93,7 @@ async fn full_trs_drs_wes_tes_beacon_pipeline() -> Result<()> {
         workflow_type_version: "v1.2".to_owned(),
         tags: None,
         workflow_params: serde_json::json!({
-            "input_drs_uri": drs_obj.get("self_uri").cloned().unwrap_or(Value::String(format!("drs://{}", drs_id)))
+            "input_drs_uri": preferred_drs_input_uri(&drs_obj, drs_id)
         }),
     };
     let run_id = submit_wes_run(&client, &cfg.services.wes_url, &req).await?;

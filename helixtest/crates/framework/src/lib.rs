@@ -141,7 +141,10 @@ fn enabled_services_from_config(cfg: &TestConfig) -> HashSet<ServiceKind> {
     set
 }
 
-pub async fn run_all(mode: Mode, only: Option<HashSet<ServiceKind>>) -> anyhow::Result<OverallReport> {
+pub async fn run_all(
+    mode: Mode,
+    only: Option<HashSet<ServiceKind>>,
+) -> anyhow::Result<OverallReport> {
     // Auto-detect Ferrum by inspecting WES /service-info if in generic mode.
     let cfg = TestConfig::from_env_or_file()?;
     let client = HttpClient::new();
@@ -197,12 +200,24 @@ pub async fn run_all(mode: Mode, only: Option<HashSet<ServiceKind>>) -> anyhow::
             continue;
         }
         let report = match service {
-            ServiceKind::Wes => wes::run_wes_checks(effective_mode, &features, &cfg, &client).await?,
-            ServiceKind::Tes => tes::run_tes_checks(effective_mode, &features, &cfg, &client).await?,
-            ServiceKind::Drs => drs::run_drs_checks(effective_mode, &features, &cfg, &client).await?,
-            ServiceKind::Trs => trs::run_trs_checks(effective_mode, &features, &cfg, &client).await?,
-            ServiceKind::Beacon => beacon::run_beacon_checks(effective_mode, &features, &cfg, &client).await?,
-            ServiceKind::Htsget => htsget::run_htsget_checks(effective_mode, &features, &cfg, &client).await?,
+            ServiceKind::Wes => {
+                wes::run_wes_checks(effective_mode, &features, &cfg, &client).await?
+            }
+            ServiceKind::Tes => {
+                tes::run_tes_checks(effective_mode, &features, &cfg, &client).await?
+            }
+            ServiceKind::Drs => {
+                drs::run_drs_checks(effective_mode, &features, &cfg, &client).await?
+            }
+            ServiceKind::Trs => {
+                trs::run_trs_checks(effective_mode, &features, &cfg, &client).await?
+            }
+            ServiceKind::Beacon => {
+                beacon::run_beacon_checks(effective_mode, &features, &cfg, &client).await?
+            }
+            ServiceKind::Htsget => {
+                htsget::run_htsget_checks(effective_mode, &features, &cfg, &client).await?
+            }
             ServiceKind::Auth => {
                 if matches!(effective_mode, Mode::Ferrum) && skip_auth {
                     ServiceReport {
@@ -211,7 +226,9 @@ pub async fn run_all(mode: Mode, only: Option<HashSet<ServiceKind>>) -> anyhow::
                             name: "Auth suite skipped (HELIXTEST_SKIP_AUTH=true)".to_string(),
                             level: ComplianceLevel::Level1,
                             passed: true,
-                            error: Some("skipped: HELIXTEST_SKIP_AUTH=true in Ferrum mode".to_string()),
+                            error: Some(
+                                "skipped: HELIXTEST_SKIP_AUTH=true in Ferrum mode".to_string(),
+                            ),
                             category: TestCategory::Security,
                             weight: 1.0,
                         }],
@@ -223,7 +240,9 @@ pub async fn run_all(mode: Mode, only: Option<HashSet<ServiceKind>>) -> anyhow::
             ServiceKind::Crypt4gh => {
                 crypt4gh::run_crypt4gh_checks(effective_mode, &features, &cfg, &client).await?
             }
-            ServiceKind::E2e => e2e::run_e2e_checks(effective_mode, &features, &cfg, &client).await?,
+            ServiceKind::E2e => {
+                e2e::run_e2e_checks(effective_mode, &features, &cfg, &client).await?
+            }
         };
         executed_test_modules.push(service);
         services.push(report);

@@ -134,17 +134,23 @@ pub fn validate_trs_tool_version(value: &Value) -> Result<()> {
 // --- htsget (GA4GH htsget 1.3.0) ---
 
 fn load_htsget_service_info_schema() -> Result<JSONSchema> {
-    let schema = resolve_and_get_schema(HTSGET_OPENAPI_YAML, "htsgetServiceInfo", "htsget OpenAPI")?;
+    let schema =
+        resolve_and_get_schema(HTSGET_OPENAPI_YAML, "htsgetServiceInfo", "htsget OpenAPI")?;
     compile_schema(schema, "htsgetServiceInfo")
 }
 
 fn load_htsget_ticket_reads_schema() -> Result<JSONSchema> {
-    let schema = resolve_and_get_schema(HTSGET_OPENAPI_YAML, "htsgetResponseReads", "htsget OpenAPI")?;
+    let schema =
+        resolve_and_get_schema(HTSGET_OPENAPI_YAML, "htsgetResponseReads", "htsget OpenAPI")?;
     compile_schema(schema, "htsgetResponseReads")
 }
 
 fn load_htsget_ticket_variants_schema() -> Result<JSONSchema> {
-    let schema = resolve_and_get_schema(HTSGET_OPENAPI_YAML, "htsgetResponseVariants", "htsget OpenAPI")?;
+    let schema = resolve_and_get_schema(
+        HTSGET_OPENAPI_YAML,
+        "htsgetResponseVariants",
+        "htsget OpenAPI",
+    )?;
     compile_schema(schema, "htsgetResponseVariants")
 }
 
@@ -167,7 +173,8 @@ pub fn validate_htsget_ticket_reads(value: &Value) -> Result<()> {
 
 /// Validate successful variants ticket (`htsgetResponseVariants`).
 pub fn validate_htsget_ticket_variants(value: &Value) -> Result<()> {
-    let schema = HTSGET_TICKET_VARIANTS_SCHEMA.get_or_try_init(load_htsget_ticket_variants_schema)?;
+    let schema =
+        HTSGET_TICKET_VARIANTS_SCHEMA.get_or_try_init(load_htsget_ticket_variants_schema)?;
     validate_against(schema, value, "GA4GH htsget htsgetResponseVariants schema")
 }
 

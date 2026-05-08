@@ -20,7 +20,5 @@ See `helixtest/README.md` for full details and usage. For **Ferrum**: HelixTest 
 
 ---
 
-Built by **Synaptic Four** for transparent, standards-based scientific infrastructure.
-Developed by a neurodiverse team, including autistic engineers, with a focus on precision, clarity, and reliable operations.
-Contact: [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com)
+Synaptic Four · Contact: [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com)
 

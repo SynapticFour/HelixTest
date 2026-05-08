@@ -377,7 +377,6 @@ HelixTest is provided **as is**, without warranty of any kind, express or implie
 
 ---
 
-**Synaptic Four** — Built with ❤️ for the open science community. Implementing GA4GH open standards for sovereign bioinformatics infrastructure. Proudly developed by individuals on the autism spectrum in Germany. We build tools that are precise, thorough, and designed to work exactly as documented.  
 © 2025 Synaptic Four · Licensed under [Apache-2.0](../LICENSE).  
 Contact: [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com)
 

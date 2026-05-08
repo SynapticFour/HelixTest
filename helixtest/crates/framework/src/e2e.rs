@@ -30,6 +30,17 @@ fn test_data_dir() -> PathBuf {
         .join("test-data")
 }
 
+fn preferred_drs_input_uri(drs_obj: &Value, drs_id: &str) -> String {
+    // E2E policy: use DRS URI by default. If DRS exposes self_uri, accept it only
+    // when it is already a drs:// URI.
+    if let Some(self_uri) = drs_obj.get("self_uri").and_then(|v| v.as_str()) {
+        if self_uri.starts_with("drs://") {
+            return self_uri.to_string();
+        }
+    }
+    format!("drs://{}", drs_id)
+}
+
 pub async fn run_e2e_checks(
     _mode: Mode,
     _features: &Features,
@@ -50,7 +61,9 @@ async fn e2e_trs_drs_wes_tes_drs_beacon_pipeline(
 ) -> TestCaseResult {
     let result = run_e2e_pipeline(cfg, client).await;
     TestCaseResult {
-        name: "E2E TRS→DRS→WES→DRS output→Beacon (WES polled to terminal; no TES poll in this module)".into(),
+        name:
+            "E2E TRS→DRS→WES→DRS output→Beacon (WES polled to terminal; no TES poll in this module)"
+                .into(),
         level: ComplianceLevel::Level3,
         passed: result.is_ok(),
         error: result.err().map(|e| e.to_string()),
@@ -119,17 +132,14 @@ async fn run_e2e_pipeline(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
         host.to_string()
     };
     let trs_workflow_url = format!("trs://{}/{}/{}", registry, tool_id, version_id);
-    let self_uri = drs_obj
-        .get("self_uri")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| format!("drs://{}", drs_id));
     let req = WesRunRequest {
         workflow_url: trs_workflow_url,
         workflow_type: "CWL".to_owned(),
         workflow_type_version: "v1.2".to_owned(),
         tags: None,
-        workflow_params: serde_json::json!({ "input_drs_uri": Value::String(self_uri) }),
+        workflow_params: serde_json::json!({
+            "input_drs_uri": preferred_drs_input_uri(&drs_obj, drs_id)
+        }),
     };
     let run_id = submit_wes_run(client, &cfg.services.wes_url, &req).await?;
 

@@ -159,7 +159,9 @@ async fn level2_lifecycle_success(cfg: &TestConfig, client: &HttpClient) -> Test
     }
     .await;
     TestCaseResult {
-        name: "WES lifecycle success echo (API may show QUEUED/INITIALIZING/RUNNING before COMPLETE)".into(),
+        name:
+            "WES lifecycle success echo (API may show QUEUED/INITIALIZING/RUNNING before COMPLETE)"
+                .into(),
         level: ComplianceLevel::Level2,
         passed: result.is_ok(),
         error: result.err().map(|e| e.to_string()),

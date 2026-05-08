@@ -200,7 +200,9 @@ fn validate_reads_service_info_response(v: &Value) -> Result<(), String> {
             typ.get("version")
         ));
     }
-    let h = v.get("htsget").ok_or_else(|| "missing htsget".to_string())?;
+    let h = v
+        .get("htsget")
+        .ok_or_else(|| "missing htsget".to_string())?;
     if h.get("datatype").and_then(|x| x.as_str()) != Some("reads") {
         return Err(format!(
             "/reads/service-info: htsget.datatype must be reads, got {:?}",
@@ -230,7 +232,9 @@ fn validate_variants_service_info_response(v: &Value) -> Result<(), String> {
             typ.get("version")
         ));
     }
-    let h = v.get("htsget").ok_or_else(|| "missing htsget".to_string())?;
+    let h = v
+        .get("htsget")
+        .ok_or_else(|| "missing htsget".to_string())?;
     if h.get("datatype").and_then(|x| x.as_str()) != Some("variants") {
         return Err(format!(
             "/variants/service-info: htsget.datatype must be variants, got {:?}",
