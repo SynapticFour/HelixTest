@@ -201,9 +201,17 @@ async fn run_ont_profile(client: &HttpClient, base: &str) -> Vec<TestCaseResult>
     };
 
     let ont_meta = serde_json::json!({
+        "format": "pod5",
+        "source_path": "/data/synthetic_ont_file.pod5.stub",
+        "run_id": "helixtest-africa-run",
+        "sample_id": "sample-1",
         "organism": "Plasmodium_falciparum",
-        "quality": { "mean_qscore": 12.5 },
-        "flowcell_id": "HELIXTEST-AFRICA"
+        "dorado_basecalled": false,
+        "quality_metrics": {
+            "mean_qscore": 12.5,
+            "read_count": 100,
+            "n50": 1000
+        }
     });
 
     let form = reqwest::multipart::Form::new()
