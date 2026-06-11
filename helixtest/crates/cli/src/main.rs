@@ -13,6 +13,29 @@ use tracing::info;
 enum Mode {
     Generic,
     Ferrum,
+    #[value(name = "ferrum-africa")]
+    FerrumAfrica,
+}
+
+#[derive(clap::ValueEnum, Debug, Clone)]
+enum AfricaProfileArg {
+    Offline,
+    Ont,
+    Outbreak,
+    Federation,
+    All,
+}
+
+impl AfricaProfileArg {
+    fn to_profile(&self) -> framework::africa::AfricaProfile {
+        match self {
+            AfricaProfileArg::Offline => framework::africa::AfricaProfile::Offline,
+            AfricaProfileArg::Ont => framework::africa::AfricaProfile::Ont,
+            AfricaProfileArg::Outbreak => framework::africa::AfricaProfile::Outbreak,
+            AfricaProfileArg::Federation => framework::africa::AfricaProfile::Federation,
+            AfricaProfileArg::All => framework::africa::AfricaProfile::All,
+        }
+    }
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]
@@ -91,6 +114,10 @@ struct Args {
     #[arg(long, value_enum)]
     only: Vec<ServiceArg>,
 
+    /// Africa profile when using --mode ferrum-africa (offline, ont, outbreak, federation, all)
+    #[arg(long, value_enum, default_value_t = AfricaProfileArg::All)]
+    africa_profile: AfricaProfileArg,
+
     /// Enable verbose logging (sets RUST_LOG=debug if not already set)
     #[arg(long)]
     verbose: bool,
@@ -106,6 +133,9 @@ async fn main() -> Result<()> {
     }
     if let Some(profile) = &args.profile {
         std::env::set_var("HELIXTEST_PROFILE", profile);
+    }
+    if matches!(args.mode, Mode::FerrumAfrica) {
+        std::env::set_var("HELIXTEST_AFRICA_PROFILE", "ferrum-africa");
     }
     init_logging();
     if args.all {
@@ -135,23 +165,30 @@ async fn main() -> Result<()> {
         let framework_mode = match args.mode {
             Mode::Generic => FrameworkMode::Generic,
             Mode::Ferrum => FrameworkMode::Ferrum,
+            Mode::FerrumAfrica => FrameworkMode::FerrumAfrica,
         };
 
         info!(mode = ?args.mode, "Running HelixTest conformance suite");
-        let only = if args.only.is_empty() {
-            None
-        } else {
-            Some(
-                args.only
-                    .iter()
-                    .map(|s| s.to_kind())
-                    .collect::<HashSet<_>>(),
-            )
-        };
         let run_started = Instant::now();
-        let mut report = run_all(framework_mode, only)
-            .await
-            .context("HelixTest conformance run failed (check config and service URLs)")?;
+        let mut report = if matches!(args.mode, Mode::FerrumAfrica) {
+            framework::africa::run_africa(args.africa_profile.to_profile())
+                .await
+                .context("HelixTest Africa mode run failed (check config and service URLs)")?
+        } else {
+            let only = if args.only.is_empty() {
+                None
+            } else {
+                Some(
+                    args.only
+                        .iter()
+                        .map(|s| s.to_kind())
+                        .collect::<HashSet<_>>(),
+                )
+            };
+            run_all(framework_mode, only)
+                .await
+                .context("HelixTest conformance run failed (check config and service URLs)")?
+        };
         if report_diagnostics_requested() {
             report.diagnostics = Some(ReportDiagnostics {
                 suite_duration_ms: run_started.elapsed().as_millis() as u64,

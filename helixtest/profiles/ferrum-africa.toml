@@ -1,0 +1,14 @@
+[services]
+wes  = "http://localhost:8080/ga4gh/wes/v1"
+tes  = "http://localhost:8080/ga4gh/tes/v1"
+drs  = "http://localhost:8080/ga4gh/drs/v1"
+trs  = "http://localhost:8080/ga4gh/trs/v2"
+beacon = "http://localhost:8080/ga4gh/beacon/v2"
+auth = "http://localhost:8080/passports/v1"
+htsget = "http://localhost:8080/ga4gh/htsget/v1"
+
+[subset]
+disabled_services = ["wes", "tes", "trs", "e2e", "auth"]
+
+[features]
+supports_beacon_v2 = true

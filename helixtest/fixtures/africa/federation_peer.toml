@@ -1,0 +1,6 @@
+# Example federation peer config for two-instance HelixTest Africa profile.
+# Set FERRUM_AFRICA_PEER_URL to the peer gateway base when running federation tests.
+
+peer_url = "http://localhost:8081"
+aggregate_strategy = "union"
+peer_requests_per_minute = 30

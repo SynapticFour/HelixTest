@@ -1,3 +1,4 @@
+pub mod africa;
 pub mod auth;
 pub mod beacon;
 pub mod crypt4gh;
@@ -25,12 +26,14 @@ use tracing::info;
 pub enum Mode {
     Generic,
     Ferrum,
+    FerrumAfrica,
 }
 
 impl Mode {
     pub fn from_str(s: &str) -> Self {
         match s {
             "ferrum" | "Ferrum" => Mode::Ferrum,
+            "ferrum-africa" | "FerrumAfrica" => Mode::FerrumAfrica,
             _ => Mode::Generic,
         }
     }
@@ -105,6 +108,7 @@ fn parse_service_name(name: &str) -> Option<ServiceKind> {
         "auth" => Some(ServiceKind::Auth),
         "crypt4gh" => Some(ServiceKind::Crypt4gh),
         "e2e" => Some(ServiceKind::E2e),
+        "africa" => Some(ServiceKind::Africa),
         _ => None,
     }
 }
@@ -243,6 +247,17 @@ pub async fn run_all(
             ServiceKind::E2e => {
                 e2e::run_e2e_checks(effective_mode, &features, &cfg, &client).await?
             }
+            ServiceKind::Africa => ServiceReport {
+                service: ServiceKind::Africa,
+                tests: vec![TestCaseResult {
+                    name: "Africa suite skipped (use --mode ferrum-africa)".into(),
+                    level: ComplianceLevel::Level1,
+                    passed: true,
+                    error: Some("skipped: use --mode ferrum-africa".into()),
+                    category: TestCategory::Other,
+                    weight: 0.0,
+                }],
+            },
         };
         executed_test_modules.push(service);
         services.push(report);
@@ -258,6 +273,7 @@ pub async fn run_all(
         ServiceKind::Auth => 6,
         ServiceKind::Crypt4gh => 7,
         ServiceKind::E2e => 8,
+        ServiceKind::Africa => 9,
     });
     Ok(OverallReport {
         services,

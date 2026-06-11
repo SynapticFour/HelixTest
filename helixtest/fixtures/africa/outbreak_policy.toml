@@ -1,0 +1,7 @@
+# Example outbreak policy for HelixTest Africa profile.
+# Ferrum reads outbreak policies from server config; this file documents expected fields.
+
+policy_name = "helixtest-africa"
+trigger_pathogen = "Plasmodium_falciparum"
+access_tier = "beacon_only"
+emergency_recipients = ["helixtest-emergency@example.org"]
