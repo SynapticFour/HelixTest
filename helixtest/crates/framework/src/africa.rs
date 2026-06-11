@@ -118,16 +118,9 @@ async fn run_offline_profile(
 ) -> Vec<TestCaseResult> {
     let mut tests = Vec::new();
 
-    match client
-        .get_json(&format!("{}/health", base))
-        .await
-    {
+    match client.get_json(&format!("{}/health", base)).await {
         Ok(_) => tests.push(pass("offline: gateway /health", TestCategory::Lifecycle)),
-        Err(e) => tests.push(fail(
-            "offline: gateway /health",
-            TestCategory::Lifecycle,
-            e,
-        )),
+        Err(e) => tests.push(fail("offline: gateway /health", TestCategory::Lifecycle, e)),
     }
 
     for (name, url) in [
@@ -191,11 +184,7 @@ async fn run_ont_profile(client: &HttpClient, base: &str) -> Vec<TestCaseResult>
     let stub = match std::fs::read(&fixture) {
         Ok(b) => b,
         Err(e) => {
-            tests.push(fail(
-                "ont: load fixture stub",
-                TestCategory::Lifecycle,
-                e,
-            ));
+            tests.push(fail("ont: load fixture stub", TestCategory::Lifecycle, e));
             return tests;
         }
     };
@@ -225,21 +214,29 @@ async fn run_ont_profile(client: &HttpClient, base: &str) -> Vec<TestCaseResult>
         );
 
     let url = format!("{}/api/v1/ingest/ont", base);
-    let resp = client
-        .inner()
-        .post(&url)
-        .multipart(form)
-        .send()
-        .await;
+    let resp = client.inner().post(&url).multipart(form).send().await;
 
     let drs_id = match resp {
         Ok(r) if r.status().is_success() => match r.json::<serde_json::Value>().await {
             Ok(v) => v
-                .get("drs_object_id")
+                .get("object_id")
+                .or_else(|| v.get("drs_object_id"))
                 .and_then(|x| x.as_str())
-                .map(|s| s.to_string()),
+                .map(|s| s.to_string())
+                .or_else(|| {
+                    tests.push(fail(
+                        "ont: ingest response object id",
+                        TestCategory::Lifecycle,
+                        format!("missing object_id/drs_object_id: {v}"),
+                    ));
+                    None
+                }),
             Err(e) => {
-                tests.push(fail("ont: ingest response JSON", TestCategory::Lifecycle, e));
+                tests.push(fail(
+                    "ont: ingest response JSON",
+                    TestCategory::Lifecycle,
+                    e,
+                ));
                 None
             }
         },
@@ -265,11 +262,7 @@ async fn run_ont_profile(client: &HttpClient, base: &str) -> Vec<TestCaseResult>
 
     if let Some(id) = drs_id {
         tests.push(pass("ont: DRS object created", TestCategory::Lifecycle));
-        let obj_url = format!(
-            "{}/ga4gh/drs/v1/objects/{}",
-            base.trim_end_matches('/'),
-            id
-        );
+        let obj_url = format!("{}/ga4gh/drs/v1/objects/{}", base.trim_end_matches('/'), id);
         match client.get_json(&obj_url).await {
             Ok(v) if v.get("ont_metrics").is_some() => {
                 tests.push(pass("ont: ont_metrics on DRS object", TestCategory::Schema));
@@ -346,14 +339,15 @@ async fn run_outbreak_profile(client: &HttpClient, base: &str) -> Vec<TestCaseRe
         "deactivation_reason": "helixtest africa profile"
     });
     match client
-        .post_json(
-            &format!("{}/api/v1/outbreak/deactivate", base),
-            &deactivate,
-        )
+        .post_json(&format!("{}/api/v1/outbreak/deactivate", base), &deactivate)
         .await
     {
         Ok(_) => tests.push(pass("outbreak: deactivate policy", TestCategory::Security)),
-        Err(e) => tests.push(fail("outbreak: deactivate policy", TestCategory::Security, e)),
+        Err(e) => tests.push(fail(
+            "outbreak: deactivate policy",
+            TestCategory::Security,
+            e,
+        )),
     }
 
     match client
@@ -398,7 +392,10 @@ async fn run_federation_profile(client: &HttpClient, base: &str) -> Vec<TestCase
     );
     match client.get_json(&local_url).await {
         Ok(v) => {
-            tests.push(pass("federation: local federate query succeeds", TestCategory::Interoperability));
+            tests.push(pass(
+                "federation: local federate query succeeds",
+                TestCategory::Interoperability,
+            ));
             if v["meta"]["warnings"].is_array() {
                 tests.push(pass(
                     "federation: warnings present when peers fail",
