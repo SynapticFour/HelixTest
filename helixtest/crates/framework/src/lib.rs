@@ -1,4 +1,5 @@
 pub mod africa;
+pub mod infra;
 pub mod auth;
 pub mod beacon;
 pub mod crypt4gh;
@@ -27,6 +28,7 @@ pub enum Mode {
     Generic,
     Ferrum,
     FerrumAfrica,
+    FerrumInfra,
 }
 
 impl Mode {
@@ -34,6 +36,7 @@ impl Mode {
         match s {
             "ferrum" | "Ferrum" => Mode::Ferrum,
             "ferrum-africa" | "FerrumAfrica" => Mode::FerrumAfrica,
+            "ferrum+infra" | "ferrum-infra" | "FerrumInfra" => Mode::FerrumInfra,
             _ => Mode::Generic,
         }
     }
@@ -109,6 +112,7 @@ fn parse_service_name(name: &str) -> Option<ServiceKind> {
         "crypt4gh" => Some(ServiceKind::Crypt4gh),
         "e2e" => Some(ServiceKind::E2e),
         "africa" => Some(ServiceKind::Africa),
+        "infra" => Some(ServiceKind::Infra),
         _ => None,
     }
 }
@@ -258,6 +262,17 @@ pub async fn run_all(
                     weight: 0.0,
                 }],
             },
+            ServiceKind::Infra => ServiceReport {
+                service: ServiceKind::Infra,
+                tests: vec![TestCaseResult {
+                    name: "Infra suite skipped (use --mode ferrum+infra)".into(),
+                    level: ComplianceLevel::Level1,
+                    passed: true,
+                    error: Some("skipped: use --mode ferrum+infra".into()),
+                    category: TestCategory::Other,
+                    weight: 0.0,
+                }],
+            },
         };
         executed_test_modules.push(service);
         services.push(report);
@@ -274,6 +289,7 @@ pub async fn run_all(
         ServiceKind::Crypt4gh => 7,
         ServiceKind::E2e => 8,
         ServiceKind::Africa => 9,
+        ServiceKind::Infra => 10,
     });
     Ok(OverallReport {
         services,

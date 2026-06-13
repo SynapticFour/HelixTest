@@ -42,6 +42,7 @@ pub enum ServiceKind {
     Crypt4gh,
     E2e,
     Africa,
+    Infra,
 }
 
 impl fmt::Display for ServiceKind {
@@ -57,6 +58,7 @@ impl fmt::Display for ServiceKind {
             ServiceKind::Crypt4gh => "Crypt4GH",
             ServiceKind::E2e => "E2E",
             ServiceKind::Africa => "Africa",
+            ServiceKind::Infra => "Infra",
         };
         write!(f, "{}", s)
     }
@@ -140,6 +142,7 @@ fn service_order(s: &ServiceKind) -> u8 {
         ServiceKind::Crypt4gh => 7,
         ServiceKind::E2e => 8,
         ServiceKind::Africa => 9,
+        ServiceKind::Infra => 10,
     }
 }
 

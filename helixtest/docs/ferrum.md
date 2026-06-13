@@ -72,6 +72,35 @@ Optional **Level 3** checks (see main [README](../README.md#crypt4gh-ferrum-rewr
 
 Ferrum must serve **decrypt_plain** on the URL you configure (server-side `stream_decrypt` while data stays Crypt4GH at rest).
 
+## ferrum+infra co-deploy mode
+
+When Ferrum and **ga4gh-infra** run together (e.g. Ferrum-GA4GH-Demo `./run --with-infra`),
+use the dedicated co-deploy profile and mode:
+
+```bash
+export HELIXTEST_PROFILE=ferrum-infra
+cargo run --bin helixtest -- --all --mode ferrum+infra
+```
+
+Or in one line:
+
+```bash
+helixtest --all --mode ferrum+infra --profile ferrum-infra
+```
+
+**Checks (Level 2 / Security):**
+
+| Test | Meaning |
+|------|---------|
+| Broker `service-info` | ga4gh-infra AAI broker reachable on **8180** |
+| Service registry entries | `GET /services` on **8183** returns registered GA4GH services |
+| Ferrum DRS in registry | At least one registry entry with artifact `drs` (from Ferrum `auto_register`) |
+| Broker login → Passport | mock-idp OIDC flow via broker `/login` |
+| Passport on DRS | `Authorization: Bearer <Passport>` accepted on Ferrum DRS `GET /objects/{id}` |
+
+**URLs** (override via env): `GA4GH_BROKER_URL`, `GA4GH_SERVICE_REGISTRY_URL`,
+`GATEWAY_BASE`, `HELIXTEST_AUTH_OBJECT_ID` (default `test-object-1`).
+
 ## Mode: generic vs ferrum
 
 - **`--mode ferrum`** – Loads features from `profiles/ferrum.toml` (if no `HELIXTEST_PROFILE` is set) and skips Ferrum auto-detection.
