@@ -35,6 +35,10 @@ updates:
       - dependency-name: "rand"
         update-types: ["version-update:semver-major"]
       - dependency-name: "age"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "jsonschema"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "thiserror"
         update-types: ["version-update:semver-major"]
       - dependency-name: "reqwest"
         update-types: ["version-update:semver-major"]
