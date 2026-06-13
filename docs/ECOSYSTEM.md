@@ -38,6 +38,38 @@ HelixTest **validates** implementations; it does not ship GA4GH services. Ferrum
 | ADS | — | 8190 |
 | mock-idp | — | 9100 |
 
+## Local lifecycle (unified commands)
+
+Repos that run a **local Docker stack** share the same verbs:
+
+| Verb | Meaning |
+|------|---------|
+| **up** | Install (if needed) and start |
+| **down** | Stop containers; **keep volumes** |
+| **destroy** | Stop containers and **remove volumes** |
+
+| Repository | Deploy | Stop | Destroy | Notes |
+|------------|--------|------|---------|-------|
+| **ga4gh-infra** | `make up` / `just up` | `make down` | `make destroy` | Native binary: [getting-started.md](https://github.com/SynapticFour/ga4gh-infra/blob/main/docs/getting-started.md) |
+| **Ferrum** | `make up` / `ferrum demo start` | `make down` | `make destroy` | Laptop: `ferrum demo start --offline` |
+| **Ferrum-Lab-Kit** | `make up` | `make down` | `make destroy` | Co-deploy: `make up-with-infra` |
+| **Ferrum-GA4GH-Demo** | `make up` / `./run` | `make down` | `make destroy` | Co-deploy: `make up-with-infra` |
+| **HelixTest** | — | — | — | Conformance runner (needs a running target) |
+
+**Multi-repo co-deploy** (Ferrum + ga4gh-infra):
+
+```bash
+# Benchmark path (Demo)
+cd Ferrum-GA4GH-Demo && make up-with-infra
+make down        # or make destroy
+
+# Field edge path (Lab Kit)
+cd Ferrum-Lab-Kit && make up-with-infra
+make down        # or make destroy
+```
+
+Secondary options (always available): repo `scripts/stack-*.sh`, raw `docker compose`, and paths documented in each README.
+
 ## Quick starts
 
 **Benchmark + co-deploy (demo):**
