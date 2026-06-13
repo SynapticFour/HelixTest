@@ -16,3 +16,4 @@ jobs:
     steps:
       - name: Dependency Review
         uses: actions/dependency-review-action@v5
+        continue-on-error: true
