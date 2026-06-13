@@ -15,6 +15,8 @@ enum Mode {
     Ferrum,
     #[value(name = "ferrum-africa")]
     FerrumAfrica,
+    #[value(name = "ferrum+infra")]
+    FerrumInfra,
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]
@@ -137,6 +139,9 @@ async fn main() -> Result<()> {
     if matches!(args.mode, Mode::FerrumAfrica) {
         std::env::set_var("HELIXTEST_AFRICA_PROFILE", "ferrum-africa");
     }
+    if matches!(args.mode, Mode::FerrumInfra) {
+        std::env::set_var("HELIXTEST_PROFILE", "ferrum-infra");
+    }
     init_logging();
     if args.all {
         println!("{}", BANNER);
@@ -166,6 +171,7 @@ async fn main() -> Result<()> {
             Mode::Generic => FrameworkMode::Generic,
             Mode::Ferrum => FrameworkMode::Ferrum,
             Mode::FerrumAfrica => FrameworkMode::FerrumAfrica,
+            Mode::FerrumInfra => FrameworkMode::FerrumInfra,
         };
 
         info!(mode = ?args.mode, "Running HelixTest conformance suite");
@@ -174,6 +180,10 @@ async fn main() -> Result<()> {
             framework::africa::run_africa(args.africa_profile.to_profile())
                 .await
                 .context("HelixTest Africa mode run failed (check config and service URLs)")?
+        } else if matches!(args.mode, Mode::FerrumInfra) {
+            framework::infra::run_infra()
+                .await
+                .context("HelixTest ferrum+infra mode run failed (check co-deploy stack URLs)")?
         } else {
             let only = if args.only.is_empty() {
                 None

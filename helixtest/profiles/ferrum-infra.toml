@@ -1,0 +1,20 @@
+# Ferrum + ga4gh-infra co-deploy profile (see Ferrum-GA4GH-Demo ./run --with-infra).
+[services]
+wes  = "http://localhost:18080/ga4gh/wes/v1"
+tes  = "http://localhost:18080/ga4gh/tes/v1"
+drs  = "http://localhost:18080/ga4gh/drs/v1"
+trs  = "http://localhost:18080/ga4gh/trs/v2"
+beacon = "http://localhost:18080/ga4gh/beacon/v2"
+auth = "http://127.0.0.1:8180"
+
+[subset]
+disabled_services = ["wes", "tes", "trs", "beacon", "htsget", "auth", "crypt4gh", "e2e"]
+
+[features]
+supports_beacon_v2 = true
+
+[infra]
+broker_url = "http://127.0.0.1:8180"
+service_registry_url = "http://127.0.0.1:8183"
+visa_registry_url = "http://127.0.0.1:8181"
+ads_url = "http://127.0.0.1:8190"
