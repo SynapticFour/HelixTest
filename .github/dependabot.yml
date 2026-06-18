@@ -17,7 +17,12 @@ updates:
     ignore:
       # Bulk action bumps closed without merge — bump workflows manually.
       - dependency-name: "*"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+        update-types:
+          [
+            "version-update:semver-major",
+            "version-update:semver-minor",
+            "version-update:semver-patch",
+          ]
 
   - package-ecosystem: "cargo"
     directory: "/"
@@ -46,3 +51,5 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "toml"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "schemars"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
