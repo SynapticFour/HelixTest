@@ -1,4 +1,4 @@
-## HelixTest — GA4GH Conformance Suite
+# HelixTest — GA4GH Conformance Suite
 
 HelixTest is a Rust-based conformance and integration test suite for GA4GH-style platforms. The CLI binary is **`helixtest`**.
 
