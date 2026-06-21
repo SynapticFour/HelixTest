@@ -11,6 +11,12 @@ pub struct HttpClient {
     inner: Client,
 }
 
+impl Default for HttpClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HttpClient {
     pub fn new() -> Self {
         init_logging();
@@ -52,7 +58,7 @@ impl HttpClient {
         let body_str = body.to_string();
         debug!(%url, body = %body_str, "POST request");
         let strategy = ExponentialBackoff::from_millis(200).map(jitter).take(5);
-        let resp = Retry::spawn(strategy, || async {
+        let resp = Retry::start(strategy, || async {
             let r = self
                 .inner
                 .post(url)
@@ -77,7 +83,7 @@ impl HttpClient {
     async fn get_with_retry(&self, url: &str) -> Result<Response> {
         info!(%url, "GET with retry");
         let strategy = ExponentialBackoff::from_millis(200).map(jitter).take(5);
-        let resp = Retry::spawn(strategy, || async {
+        let resp = Retry::start(strategy, || async {
             let r = self.inner.get(url).send().await;
             r
         })

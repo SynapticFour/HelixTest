@@ -64,7 +64,7 @@ impl fmt::Display for ServiceKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
 pub enum TestCategory {
     Schema,
     Lifecycle,
@@ -73,13 +73,8 @@ pub enum TestCategory {
     Interoperability,
     Security,
     Robustness,
+    #[default]
     Other,
-}
-
-impl Default for TestCategory {
-    fn default() -> Self {
-        TestCategory::Other
-    }
 }
 
 impl fmt::Display for TestCategory {
