@@ -215,59 +215,6 @@ async fn run_token_protected_endpoint_checks(
     tests
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use common::config::AuthChecksConfig;
-
-    #[test]
-    fn token_only_mode_detection_works() {
-        let cfg = TestConfig {
-            services: common::config::ServiceConfig {
-                wes_url: String::new(),
-                tes_url: String::new(),
-                drs_url: String::new(),
-                trs_url: String::new(),
-                beacon_url: String::new(),
-                auth_url: String::new(),
-                htsget_url: None,
-            },
-            subset: common::config::SubsetConfig::default(),
-            auth_checks: AuthChecksConfig {
-                mode: Some("token-protected-endpoints".into()),
-                ..Default::default()
-            },
-        };
-        assert!(token_only_mode(&cfg));
-    }
-
-    #[tokio::test]
-    async fn token_only_mode_without_endpoints_yields_skip_like_result() {
-        let cfg = TestConfig {
-            services: common::config::ServiceConfig {
-                wes_url: String::new(),
-                tes_url: String::new(),
-                drs_url: String::new(),
-                trs_url: String::new(),
-                beacon_url: String::new(),
-                auth_url: String::new(),
-                htsget_url: None,
-            },
-            subset: common::config::SubsetConfig::default(),
-            auth_checks: AuthChecksConfig {
-                mode: Some("token-protected-endpoints".into()),
-                protected_endpoints: Vec::new(),
-                valid_token_env: None,
-                invalid_token: None,
-            },
-        };
-        let tests = run_token_protected_endpoint_checks(&cfg, &HttpClient::new()).await;
-        assert_eq!(tests.len(), 1);
-        assert!(tests[0].passed);
-        assert!(tests[0].error.as_deref().unwrap_or("").contains("skipped"));
-    }
-}
-
 async fn level4_expired_token_rejected(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
     let result = async {
         let token = build_jwt(
@@ -362,5 +309,58 @@ async fn level4_missing_token_returns_401(cfg: &TestConfig, client: &HttpClient)
         error: result.err().map(|e| e.to_string()),
         category: TestCategory::Security,
         weight: 1.0,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use common::config::AuthChecksConfig;
+
+    #[test]
+    fn token_only_mode_detection_works() {
+        let cfg = TestConfig {
+            services: common::config::ServiceConfig {
+                wes_url: String::new(),
+                tes_url: String::new(),
+                drs_url: String::new(),
+                trs_url: String::new(),
+                beacon_url: String::new(),
+                auth_url: String::new(),
+                htsget_url: None,
+            },
+            subset: common::config::SubsetConfig::default(),
+            auth_checks: AuthChecksConfig {
+                mode: Some("token-protected-endpoints".into()),
+                ..Default::default()
+            },
+        };
+        assert!(token_only_mode(&cfg));
+    }
+
+    #[tokio::test]
+    async fn token_only_mode_without_endpoints_yields_skip_like_result() {
+        let cfg = TestConfig {
+            services: common::config::ServiceConfig {
+                wes_url: String::new(),
+                tes_url: String::new(),
+                drs_url: String::new(),
+                trs_url: String::new(),
+                beacon_url: String::new(),
+                auth_url: String::new(),
+                htsget_url: None,
+            },
+            subset: common::config::SubsetConfig::default(),
+            auth_checks: AuthChecksConfig {
+                mode: Some("token-protected-endpoints".into()),
+                protected_endpoints: Vec::new(),
+                valid_token_env: None,
+                invalid_token: None,
+            },
+        };
+        let tests = run_token_protected_endpoint_checks(&cfg, &HttpClient::new()).await;
+        assert_eq!(tests.len(), 1);
+        assert!(tests[0].passed);
+        assert!(tests[0].error.as_deref().unwrap_or("").contains("skipped"));
     }
 }

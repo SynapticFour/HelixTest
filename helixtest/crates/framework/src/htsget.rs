@@ -214,7 +214,7 @@ fn validate_reads_service_info_response(v: &Value) -> Result<(), String> {
         .and_then(|x| x.as_array())
         .ok_or_else(|| "htsget.formats missing".to_string())?;
     let fmt_strs: Vec<&str> = formats.iter().filter_map(|x| x.as_str()).collect();
-    if !fmt_strs.iter().any(|s| *s == "BAM") {
+    if !fmt_strs.contains(&"BAM") {
         return Err(format!(
             "/reads/service-info: formats must include BAM, got {:?}",
             fmt_strs
@@ -246,7 +246,7 @@ fn validate_variants_service_info_response(v: &Value) -> Result<(), String> {
         .and_then(|x| x.as_array())
         .ok_or_else(|| "htsget.formats missing".to_string())?;
     let fmt_strs: Vec<&str> = formats.iter().filter_map(|x| x.as_str()).collect();
-    if !fmt_strs.iter().any(|s| *s == "VCF") && !fmt_strs.iter().any(|s| *s == "BCF") {
+    if !fmt_strs.contains(&"VCF") && !fmt_strs.contains(&"BCF") {
         return Err(format!(
             "/variants/service-info: formats must include VCF or BCF, got {:?}",
             fmt_strs
@@ -973,7 +973,7 @@ async fn level4_htsget_dataset_auth(base: &str, client: &HttpClient) -> TestCase
     let url = format!(
         "{}/reads/{}",
         base.trim_end_matches('/'),
-        urlencoding_encode_path_segment(&obj.trim())
+        urlencoding_encode_path_segment(obj.trim())
     );
     let no_auth = match fetch_json(client, &url).await {
         Ok(x) => x,

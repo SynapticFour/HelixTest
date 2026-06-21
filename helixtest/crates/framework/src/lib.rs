@@ -32,7 +32,7 @@ pub enum Mode {
 }
 
 impl Mode {
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s {
             "ferrum" | "Ferrum" => Mode::Ferrum,
             "ferrum-africa" | "FerrumAfrica" => Mode::FerrumAfrica,

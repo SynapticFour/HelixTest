@@ -103,11 +103,12 @@ async fn run_workflow_case(case: &WorkflowCase<'_>) -> Result<()> {
                 outputs
             )
         })?;
-    if echoed != format!("hello-{}", case.name) {
+    let expected_echo = format!("hello-{}", case.name);
+    if echoed != expected_echo {
         anyhow::bail!(
             "Workflow {} echo_out mismatch: expected {}, got {}",
             case.name,
-            format!("hello-{}", case.name),
+            expected_echo,
             echoed
         );
     }
