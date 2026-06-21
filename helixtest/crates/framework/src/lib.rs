@@ -1,5 +1,4 @@
 pub mod africa;
-pub mod infra;
 pub mod auth;
 pub mod beacon;
 pub mod crypt4gh;
@@ -7,6 +6,7 @@ mod crypt4gh_ferrum_http;
 pub mod drs;
 pub mod e2e;
 pub mod htsget;
+pub mod infra;
 pub mod tes;
 pub mod trs;
 pub mod wes;

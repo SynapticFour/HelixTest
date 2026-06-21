@@ -76,7 +76,11 @@ async fn broker_login(client: &HttpClient) -> anyhow::Result<(String, String)> {
         .header(ACCEPT, "application/json")
         .send()
         .await?;
-    anyhow::ensure!(login.status().is_success(), "broker login HTTP {}", login.status());
+    anyhow::ensure!(
+        login.status().is_success(),
+        "broker login HTTP {}",
+        login.status()
+    );
 
     let session_cookie = login
         .headers()
@@ -90,9 +94,7 @@ async fn broker_login(client: &HttpClient) -> anyhow::Result<(String, String)> {
         .unwrap_or_default()
         .to_string();
 
-    let auth_url = login
-        .json::<serde_json::Value>()
-        .await?["authorization_url"]
+    let auth_url = login.json::<serde_json::Value>().await?["authorization_url"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("missing authorization_url"))?
         .replace("mock-idp:9100", "127.0.0.1:9100")
@@ -174,8 +176,7 @@ pub async fn run_infra() -> anyhow::Result<OverallReport> {
                         .and_then(|t| t.get("artifact"))
                         .and_then(|a| a.as_str())
                         .map(|a| {
-                            a.eq_ignore_ascii_case("drs")
-                                || a.eq_ignore_ascii_case("drsservice")
+                            a.eq_ignore_ascii_case("drs") || a.eq_ignore_ascii_case("drsservice")
                         })
                         .unwrap_or(false)
                 })
@@ -204,8 +205,8 @@ pub async fn run_infra() -> anyhow::Result<OverallReport> {
         )),
     }
 
-    let object_id = std::env::var("HELIXTEST_AUTH_OBJECT_ID")
-        .unwrap_or_else(|_| "test-object-1".to_string());
+    let object_id =
+        std::env::var("HELIXTEST_AUTH_OBJECT_ID").unwrap_or_else(|_| "test-object-1".to_string());
     match broker_login(&client).await {
         Ok((_subject, passport)) => {
             tests.push(pass(
@@ -217,12 +218,7 @@ pub async fn run_infra() -> anyhow::Result<OverallReport> {
                 base.trim_end_matches('/'),
                 object_id
             );
-            let resp = client
-                .inner()
-                .get(&url)
-                .bearer_auth(&passport)
-                .send()
-                .await;
+            let resp = client.inner().get(&url).bearer_auth(&passport).send().await;
             match resp {
                 Ok(r) if r.status().is_success() => tests.push(pass(
                     "infra: Passport accepted on Ferrum DRS",
