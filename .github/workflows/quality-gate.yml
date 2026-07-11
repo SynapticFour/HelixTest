@@ -8,6 +8,12 @@ on:
 # Lightweight smoke only: full lint/test/format lives in each repo's primary CI
 # (ci.yml, etc.). This workflow avoids duplicating heavy checks and queueing
 # redundant work across the org.
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
