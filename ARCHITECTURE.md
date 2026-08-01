@@ -1,25 +1,3 @@
 # Architecture Overview
 
-This document explains the system at a level that helps contributors reason about change impact.
-
-## Goals
-
-- Keep behavior predictable and testable.
-- Keep security and operational concerns explicit.
-- Keep extension points clear for new features.
-
-## High-level structure
-
-Describe the major modules/services and their responsibilities here.
-
-## Data and control flows
-
-Describe how requests/events flow through the system and where validation, authorization, and persistence happen.
-
-## Reliability and security boundaries
-
-Describe trust boundaries, secret handling, and failure modes that contributors should keep in mind.
-
-## Key extension points
-
-List where new integrations, endpoints, or jobs should be added.
+HelixTest is a Rust workspace whose `helixtest` CLI drives a shared **framework** against live GA4GH-style endpoints (WES, DRS, TRS, TES, Beacon, htsget, auth, Crypt4GH, and cross-service E2E). It does **not** host those services: operators start Ferrum, ga4gh-infra, or another target, then point profiles/config at their URLs. Detailed crate layout, mode resolution, and reporting live in [`helixtest/docs/architecture.md`](helixtest/docs/architecture.md); ecosystem lifecycle notes are in [`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md).
