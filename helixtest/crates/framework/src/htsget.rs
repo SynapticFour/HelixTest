@@ -561,8 +561,7 @@ async fn level2_variants_endpoint_wrong_kind(base: &str, client: &HttpClient) ->
     }
 }
 
-/// POST ticket with JSON body and no query string. `regions` is optional: a
-/// whole-file ticket is valid (htsget MAY return more data than requested).
+/// POST ticket with JSON body and no query string (format only).
 async fn post_ticket_no_query(
     client: &HttpClient,
     url: &str,
@@ -668,21 +667,102 @@ async fn level2_post_reads_ticket(base: &str, client: &HttpClient) -> TestCaseRe
     .await
 }
 
-async fn level2_post_reads_ticket_with_regions(base: &str, client: &HttpClient) -> TestCaseResult {
+fn ferrum_like(mode: Mode) -> bool {
+    matches!(mode, Mode::Ferrum | Mode::FerrumAfrica | Mode::FerrumInfra)
+}
+
+/// Ferrum does not implement genomic slicing: POST `regions` must be 400 InvalidInput
+/// (not a silent whole-file ticket).
+async fn post_ticket_regions_unsupported(
+    client: &HttpClient,
+    url: &str,
+    name: &str,
+    body: Value,
+) -> TestCaseResult {
+    let resp = match client
+        .inner()
+        .post(url)
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return fail(
+                name,
+                ComplianceLevel::Level2,
+                TestCategory::Robustness,
+                format!("POST failed: {}", e),
+            )
+        }
+    };
+    let status = resp.status();
+    let text = match resp.text().await {
+        Ok(t) => t,
+        Err(e) => {
+            return fail(
+                name,
+                ComplianceLevel::Level2,
+                TestCategory::Robustness,
+                format!("read body: {}", e),
+            )
+        }
+    };
+    let v: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
+    if status.as_u16() == 400 && htsget_error_code(&v) == Some("InvalidInput") {
+        if let Err(e) = validate_htsget_error(&v) {
+            return fail(
+                name,
+                ComplianceLevel::Level2,
+                TestCategory::Robustness,
+                format!("400 error body OpenAPI: {}", e),
+            );
+        }
+        return TestCaseResult::pass(name, ComplianceLevel::Level2, TestCategory::Robustness);
+    }
+    fail(
+        name,
+        ComplianceLevel::Level2,
+        TestCategory::Robustness,
+        format!(
+            "expected HTTP 400 InvalidInput for region slicing (no silent whole-file ticket), got {} err={:?} body {:.200}",
+            status,
+            htsget_error_code(&v),
+            text.chars().take(200).collect::<String>()
+        ),
+    )
+}
+
+async fn level2_post_reads_ticket_with_regions(
+    base: &str,
+    client: &HttpClient,
+    mode: Mode,
+) -> TestCaseResult {
     let id = reads_object_id();
     let url = format!(
         "{}/reads/{}",
         base.trim_end_matches('/'),
         percent_encode_path_segment(&id)
     );
+    let body = serde_json::json!({
+        "format": "BAM",
+        "regions": [{"referenceName": "chr1", "start": 0, "end": 1000}]
+    });
+    if ferrum_like(mode) {
+        return post_ticket_regions_unsupported(
+            client,
+            &url,
+            "htsget POST reads ticket with regions → InvalidInput (Ferrum does not slice)",
+            body,
+        )
+        .await;
+    }
     post_ticket_no_query(
         client,
         &url,
         "htsget POST reads ticket (JSON body with regions)",
-        serde_json::json!({
-            "format": "BAM",
-            "regions": [{"referenceName": "chr1", "start": 0, "end": 1000}]
-        }),
+        body,
         validate_htsget_ticket_reads,
         "htsgetResponseReads",
         "POST ticket must include DRS stream URL like GET",
@@ -712,6 +792,7 @@ async fn level2_post_variants_ticket(base: &str, client: &HttpClient) -> TestCas
 async fn level2_post_variants_ticket_with_regions(
     base: &str,
     client: &HttpClient,
+    mode: Mode,
 ) -> TestCaseResult {
     let id = variants_object_id();
     let url = format!(
@@ -719,14 +800,24 @@ async fn level2_post_variants_ticket_with_regions(
         base.trim_end_matches('/'),
         percent_encode_path_segment(&id)
     );
+    let body = serde_json::json!({
+        "format": "VCF",
+        "regions": [{"referenceName": "chr1", "start": 0, "end": 500}]
+    });
+    if ferrum_like(mode) {
+        return post_ticket_regions_unsupported(
+            client,
+            &url,
+            "htsget POST variants ticket with regions → InvalidInput (Ferrum does not slice)",
+            body,
+        )
+        .await;
+    }
     post_ticket_no_query(
         client,
         &url,
         "htsget POST variants ticket (JSON body with regions)",
-        serde_json::json!({
-            "format": "VCF",
-            "regions": [{"referenceName": "chr1", "start": 0, "end": 500}]
-        }),
+        body,
         validate_htsget_ticket_variants,
         "htsgetResponseVariants",
         "POST variants ticket must include DRS stream URL like GET",
@@ -1020,9 +1111,9 @@ pub async fn run_htsget_checks(
     tests.push(level1_get_variants_ticket(&base, client).await);
     tests.push(level2_variants_endpoint_wrong_kind(&base, client).await);
     tests.push(level2_post_reads_ticket(&base, client).await);
-    tests.push(level2_post_reads_ticket_with_regions(&base, client).await);
+    tests.push(level2_post_reads_ticket_with_regions(&base, client, mode).await);
     tests.push(level2_post_variants_ticket(&base, client).await);
-    tests.push(level2_post_variants_ticket_with_regions(&base, client).await);
+    tests.push(level2_post_variants_ticket_with_regions(&base, client, mode).await);
     tests.push(level2_post_reads_with_query_invalid(&base, client).await);
     tests.push(level2_get_unsupported_format_cram_on_bam(&base, client).await);
     tests.push(level2_get_class_header_invalid(&base, client).await);

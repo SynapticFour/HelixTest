@@ -51,8 +51,8 @@ With **`HELIXTEST_PROFILE=ferrum`** (or matching env URLs), **no extra htsget en
 | Area | What is tested |
 |------|----------------|
 | Service-info | `GET …/reads/service-info` and `…/variants/service-info` — `type` (`org.ga4gh` / `htsget` / **1.3.0**), `htsget.datatype`, `formats` (reads: **BAM** + CRAM; variants: **VCF**/BCF), `fieldsParameterEffective` / `tagsParametersEffective` **false**. |
-| Tickets | `GET`/`POST` reads & variants (`POST` JSON with no query string; optional `regions` — whole-file tickets are valid); `Content-Type` `application/vnd.ga4gh.htsget…` or JSON; ticket `urls[0].url` path **…/ga4gh/drs/v1/objects/{id}/stream**. |
-| Errors | Variants URL with a **reads-only** id → **404** `NotFound`; `POST` with **query string** → **400** `InvalidInput`; `GET ?format=CRAM` on a **BAM** object → **400** `UnsupportedFormat`; `GET ?class=header` → **400** `InvalidInput`. |
+| Tickets | `GET`/`POST` reads & variants (`POST` JSON with no query string); `Content-Type` `application/vnd.ga4gh.htsget…` or JSON; ticket `urls[0].url` path **…/ga4gh/drs/v1/objects/{id}/stream**. |
+| Errors | Variants URL with a **reads-only** id → **404** `NotFound`; `POST` with **query string** → **400** `InvalidInput`; `GET ?format=CRAM` on a **BAM** object → **400** `UnsupportedFormat`; `GET ?class=header` → **400** `InvalidInput`; **`POST` JSON with `regions`** → **400** `InvalidInput` (Ferrum does not slice; no silent whole-file ticket). |
 
 **Object IDs** (Ferrum demo / HelixTest DRS):
 

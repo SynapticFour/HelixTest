@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Scoring: **Skip** is not a pass. Achieved level requires executed Level 0 (L5-only → 0). Africa and E2E include L0 reachability.
-- htsget POST “no query” is format-only; separate POST tests send `regions`.
+- htsget POST “no query” is format-only; separate POST tests send `regions` (Ferrum modes expect 400 InvalidInput; generic may accept a whole-file ticket).
 - Separate **Age** service vs env-gated Crypt4GH HTTP; HMAC JWT requires `HELIXTEST_SHARED_SECRET`.
 - jsonschema kept at 0.17 (leak-once per schema); live-stack crates call `framework::run_all`.
 - MSRV **1.88** (Cargo.lock v4; `time` 0.3 requires 1.88).
