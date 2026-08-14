@@ -11,6 +11,7 @@ auth = "http://localhost:8080/passports/v1"
 # htsget = "http://localhost:8080/ga4gh/htsget/v1"
 
 [features]
+# Ferrum demo WES stubs HelixTest synthetic TRS tools (echo, scatter-gather, demo-bam-to-vcf).
 supports_scatter_gather = true
 supports_beacon_v2 = true
 strict_drs_checksums = true

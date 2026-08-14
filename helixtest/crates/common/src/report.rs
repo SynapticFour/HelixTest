@@ -704,6 +704,28 @@ mod tests {
     }
 
     #[test]
+    fn l0_plus_l3_without_l1_l2_is_level_3() {
+        let report = ServiceReport {
+            service: ServiceKind::E2e,
+            tests: vec![
+                case(
+                    "L0",
+                    ComplianceLevel::Level0,
+                    TestStatus::Pass,
+                    TestCategory::Other,
+                ),
+                case(
+                    "L3",
+                    ComplianceLevel::Level3,
+                    TestStatus::Pass,
+                    TestCategory::Interoperability,
+                ),
+            ],
+        };
+        assert_eq!(report.achieved_level(), ComplianceLevel::Level3);
+    }
+
+    #[test]
     fn only_l5_without_l0_is_level_0() {
         let report = ServiceReport {
             service: ServiceKind::Crypt4gh,

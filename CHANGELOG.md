@@ -31,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TES/E2E checksums no longer green on stale local files or missing goldens.
 - WES timeout-robustness no longer fails a fast stack; scatter/gather gated on `supports_scatter_gather`.
 - L0 reachability requires 2xx or 401 (not any 4xx).
-- Africa federation uses `FERRUM_AFRICA_PEER_URL`; Auth L0 uses `auth_url`.
+- **htsget POST “no query”** sent `regions` in the JSON body (a region-slice request). Those checks now POST `{format}` only; separate tests cover `regions` (whole-file tickets are valid).
+- Africa and E2E include Level 0 reachability so `--fail-level 1` can pass when every executed test passed (L2-only / L3-only suites previously scored as 0).
 
 See [helixtest/docs/known-limitations.md](helixtest/docs/known-limitations.md) for remaining constraints (serial HTTP, live-stack cargo tests excluded from CI).
 

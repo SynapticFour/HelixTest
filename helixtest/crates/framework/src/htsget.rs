@@ -561,21 +561,20 @@ async fn level2_variants_endpoint_wrong_kind(base: &str, client: &HttpClient) ->
     }
 }
 
-async fn level2_post_reads_ticket(base: &str, client: &HttpClient) -> TestCaseResult {
-    let id = reads_object_id();
-    let url = format!(
-        "{}/reads/{}",
-        base.trim_end_matches('/'),
-        percent_encode_path_segment(&id)
-    );
-    let name = "htsget POST reads ticket (JSON body, no query)";
-    let body = serde_json::json!({
-        "format": "BAM",
-        "regions": [{"referenceName": "chr1", "start": 0, "end": 1000}]
-    });
+/// POST ticket with JSON body and no query string. `regions` is optional: a
+/// whole-file ticket is valid (htsget MAY return more data than requested).
+async fn post_ticket_no_query(
+    client: &HttpClient,
+    url: &str,
+    name: &str,
+    body: Value,
+    validate: fn(&Value) -> anyhow::Result<()>,
+    openapi_label: &str,
+    missing_drs: &str,
+) -> TestCaseResult {
     let resp = match client
         .inner()
-        .post(&url)
+        .post(url)
         .header("Content-Type", "application/json")
         .json(&body)
         .send()
@@ -627,12 +626,12 @@ async fn level2_post_reads_ticket(base: &str, client: &HttpClient) -> TestCaseRe
             )
         }
     };
-    if let Err(e) = validate_htsget_ticket_reads(&v) {
+    if let Err(e) = validate(&v) {
         return fail(
             name,
             ComplianceLevel::Level2,
             TestCategory::Interoperability,
-            format!("POST ticket OpenAPI (htsgetResponseReads): {}", e),
+            format!("POST ticket OpenAPI ({}): {}", openapi_label, e),
         );
     }
     if !first_ticket_url_is_drs_stream(&v) {
@@ -640,7 +639,7 @@ async fn level2_post_reads_ticket(base: &str, client: &HttpClient) -> TestCaseRe
             name,
             ComplianceLevel::Level2,
             TestCategory::Interoperability,
-            "POST ticket must include DRS stream URL like GET".to_string(),
+            missing_drs.to_string(),
         );
     }
     TestCaseResult::pass(
@@ -650,6 +649,47 @@ async fn level2_post_reads_ticket(base: &str, client: &HttpClient) -> TestCaseRe
     )
 }
 
+async fn level2_post_reads_ticket(base: &str, client: &HttpClient) -> TestCaseResult {
+    let id = reads_object_id();
+    let url = format!(
+        "{}/reads/{}",
+        base.trim_end_matches('/'),
+        percent_encode_path_segment(&id)
+    );
+    post_ticket_no_query(
+        client,
+        &url,
+        "htsget POST reads ticket (JSON body, no query)",
+        serde_json::json!({ "format": "BAM" }),
+        validate_htsget_ticket_reads,
+        "htsgetResponseReads",
+        "POST ticket must include DRS stream URL like GET",
+    )
+    .await
+}
+
+async fn level2_post_reads_ticket_with_regions(base: &str, client: &HttpClient) -> TestCaseResult {
+    let id = reads_object_id();
+    let url = format!(
+        "{}/reads/{}",
+        base.trim_end_matches('/'),
+        percent_encode_path_segment(&id)
+    );
+    post_ticket_no_query(
+        client,
+        &url,
+        "htsget POST reads ticket (JSON body with regions)",
+        serde_json::json!({
+            "format": "BAM",
+            "regions": [{"referenceName": "chr1", "start": 0, "end": 1000}]
+        }),
+        validate_htsget_ticket_reads,
+        "htsgetResponseReads",
+        "POST ticket must include DRS stream URL like GET",
+    )
+    .await
+}
+
 async fn level2_post_variants_ticket(base: &str, client: &HttpClient) -> TestCaseResult {
     let id = variants_object_id();
     let url = format!(
@@ -657,86 +697,41 @@ async fn level2_post_variants_ticket(base: &str, client: &HttpClient) -> TestCas
         base.trim_end_matches('/'),
         percent_encode_path_segment(&id)
     );
-    let name = "htsget POST variants ticket (JSON body, no query)";
-    let body = serde_json::json!({
-        "format": "VCF",
-        "regions": [{"referenceName": "chr1", "start": 0, "end": 500}]
-    });
-    let resp = match client
-        .inner()
-        .post(&url)
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await
-    {
-        Ok(r) => r,
-        Err(e) => {
-            return fail(
-                name,
-                ComplianceLevel::Level2,
-                TestCategory::Interoperability,
-                format!("POST failed: {}", e),
-            );
-        }
-    };
-    let status = resp.status();
-    let text = match resp.text().await {
-        Ok(t) => t,
-        Err(e) => {
-            return fail(
-                name,
-                ComplianceLevel::Level2,
-                TestCategory::Interoperability,
-                format!("read body: {}", e),
-            );
-        }
-    };
-    if !status.is_success() {
-        return fail(
-            name,
-            ComplianceLevel::Level2,
-            TestCategory::Interoperability,
-            format!(
-                "POST {} expected 2xx, got {} body {:.300}",
-                url,
-                status,
-                text.chars().take(300).collect::<String>()
-            ),
-        );
-    }
-    let v: Value = match serde_json::from_str(&text) {
-        Ok(j) => j,
-        Err(e) => {
-            return fail(
-                name,
-                ComplianceLevel::Level2,
-                TestCategory::Interoperability,
-                format!("JSON: {}", e),
-            );
-        }
-    };
-    if let Err(e) = validate_htsget_ticket_variants(&v) {
-        return fail(
-            name,
-            ComplianceLevel::Level2,
-            TestCategory::Interoperability,
-            format!("POST ticket OpenAPI (htsgetResponseVariants): {}", e),
-        );
-    }
-    if !first_ticket_url_is_drs_stream(&v) {
-        return fail(
-            name,
-            ComplianceLevel::Level2,
-            TestCategory::Interoperability,
-            "POST variants ticket must include DRS stream URL like GET".to_string(),
-        );
-    }
-    TestCaseResult::pass(
-        name,
-        ComplianceLevel::Level2,
-        TestCategory::Interoperability,
+    post_ticket_no_query(
+        client,
+        &url,
+        "htsget POST variants ticket (JSON body, no query)",
+        serde_json::json!({ "format": "VCF" }),
+        validate_htsget_ticket_variants,
+        "htsgetResponseVariants",
+        "POST variants ticket must include DRS stream URL like GET",
     )
+    .await
+}
+
+async fn level2_post_variants_ticket_with_regions(
+    base: &str,
+    client: &HttpClient,
+) -> TestCaseResult {
+    let id = variants_object_id();
+    let url = format!(
+        "{}/variants/{}",
+        base.trim_end_matches('/'),
+        percent_encode_path_segment(&id)
+    );
+    post_ticket_no_query(
+        client,
+        &url,
+        "htsget POST variants ticket (JSON body with regions)",
+        serde_json::json!({
+            "format": "VCF",
+            "regions": [{"referenceName": "chr1", "start": 0, "end": 500}]
+        }),
+        validate_htsget_ticket_variants,
+        "htsgetResponseVariants",
+        "POST variants ticket must include DRS stream URL like GET",
+    )
+    .await
 }
 
 async fn level2_post_reads_with_query_invalid(base: &str, client: &HttpClient) -> TestCaseResult {
@@ -1025,7 +1020,9 @@ pub async fn run_htsget_checks(
     tests.push(level1_get_variants_ticket(&base, client).await);
     tests.push(level2_variants_endpoint_wrong_kind(&base, client).await);
     tests.push(level2_post_reads_ticket(&base, client).await);
+    tests.push(level2_post_reads_ticket_with_regions(&base, client).await);
     tests.push(level2_post_variants_ticket(&base, client).await);
+    tests.push(level2_post_variants_ticket_with_regions(&base, client).await);
     tests.push(level2_post_reads_with_query_invalid(&base, client).await);
     tests.push(level2_get_unsupported_format_cram_on_bam(&base, client).await);
     tests.push(level2_get_class_header_invalid(&base, client).await);

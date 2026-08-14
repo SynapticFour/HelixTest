@@ -8,6 +8,8 @@ use common::report::{
 use common::util::helixtest_root;
 use tracing::info;
 
+use crate::level0_http;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AfricaProfile {
     Offline,
@@ -63,6 +65,10 @@ pub async fn run_africa(
     info!(?profile, %base, "Running HelixTest Africa mode");
 
     let mut tests = Vec::new();
+    tests.push(level0_http(
+        "africa: gateway /health",
+        client.inner().get(format!("{}/health", base)).send().await,
+    ));
     let run_offline = matches!(profile, AfricaProfile::Offline | AfricaProfile::All);
     let run_ont = matches!(profile, AfricaProfile::Ont | AfricaProfile::All);
     let run_outbreak = matches!(profile, AfricaProfile::Outbreak | AfricaProfile::All);
@@ -99,11 +105,6 @@ async fn run_offline_profile(
     cfg: &TestConfig,
 ) -> Vec<TestCaseResult> {
     let mut tests = Vec::new();
-
-    match client.get_json(&format!("{}/health", base)).await {
-        Ok(_) => tests.push(pass("offline: gateway /health", TestCategory::Lifecycle)),
-        Err(e) => tests.push(fail("offline: gateway /health", TestCategory::Lifecycle, e)),
-    }
 
     for (name, url) in [
         ("DRS", cfg.services.drs_url.trim_end_matches('/')),

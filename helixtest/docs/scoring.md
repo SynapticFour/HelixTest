@@ -28,7 +28,8 @@ Each test is assigned a **compliance level** that reflects the kind of requireme
 A **service’s achieved level** is the highest level N such that **Level 0 was executed and passed**, and every executed (non-skip) test at each higher level that has tests also passed. Empty or skip-only levels in between do **not** block a higher N. If any executed test at level N fails, the service’s level stays at the last fully-green N.
 
 - Example: WES has Level 0 and 1 tests passing, one Level 2 test failing → WES achieved level = 1.
-- A suite with **only Level 5** tests (no executed Level 0) achieves **Level 0**. Local age checks therefore include an explicit Level 0 “library available” pass.
+- Empty or skip-only levels in between do **not** block a higher N (e.g. L0 + L3 with no L1/L2 → level 3).
+- A suite with **only Level 5** tests (no executed Level 0) achieves **Level 0**. Local age checks therefore include an explicit Level 0 “library available” pass. Africa and E2E include Level 0 reachability so `--fail-level 1` can pass when those modules run.
 - Skip-only Level 4 does not prevent Level 5 from counting once Level 0 passed, and does not pin the service at 3.
 
 ## Overall Level

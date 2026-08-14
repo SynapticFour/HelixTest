@@ -16,7 +16,7 @@ use serde_json::Value;
 use std::time::Duration;
 use url::Url;
 
-use crate::{Features, Mode};
+use crate::{level0_http, Features, Mode};
 
 fn preferred_drs_input_uri(drs_obj: &Value, drs_id: &str) -> String {
     if let Some(self_uri) = drs_obj.get("self_uri").and_then(|v| v.as_str()) {
@@ -34,6 +34,11 @@ pub async fn run_e2e_checks(
     client: &HttpClient,
 ) -> Result<ServiceReport> {
     let mut tests = Vec::new();
+    let tools_url = format!("{}/tools", cfg.services.trs_url.trim_end_matches('/'));
+    tests.push(level0_http(
+        "E2E TRS /tools reachable",
+        client.inner().get(&tools_url).send().await,
+    ));
     tests.push(e2e_trs_drs_wes_tes_drs_beacon_pipeline(cfg, client).await);
     Ok(ServiceReport {
         service: ServiceKind::E2e,
