@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `TestStatus` (Pass / Fail / Skip); skips are excluded from levels, scores, and `--fail-level`.
 - `--compose-file` and WES `/service-info` health poll for `--start-ferrum`.
-- Workspace `rust-version = "1.75"`; packages `helixtest-common` / `helixtest-framework`.
+- Workspace `rust-version = "1.85"`; packages `helixtest-common` / `helixtest-framework`.
 - Separate **Age** service vs env-gated **Crypt4GH** HTTP; `--only age`.
-- CI MSRV job (`cargo check` on 1.75); committed `Cargo.lock`.
+- CI MSRV job (`cargo check --locked` on 1.85); committed `Cargo.lock`.
 
 ### Changed
 
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI loads profile via `TestConfig::load` instead of mutating process env.
 - Local “Crypt4GH” suite is a separate **Age** service; HMAC JWT requires `HELIXTEST_SHARED_SECRET` (no `test-secret` default).
 - Achieved level requires executed Level 0; L5-only suites report Level 0.
-- jsonschema 0.17 still leak-once per official schema (MSRV); `validate_json_against` removed.
+- jsonschema 0.17 still leak-once per official schema; `validate_json_against` removed.
 - Conformance runner no longer sets AVX2 / `target-cpu` rustflags.
 
 ### Fixed

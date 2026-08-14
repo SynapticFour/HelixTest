@@ -16,11 +16,11 @@ WES/TES cases stay **serial** so the target is not overloaded. Independent servi
 
 ## jsonschema `'static` leak
 
-jsonschema 0.17 (kept for MSRV 1.75) compiles from `&'static Value`. Each official schema is `Box::leak`’d **once** when first compiled (`OnceCell`). A leak-free API needs jsonschema ≥0.26 (Rust 1.85). The old per-call leak in `validate_json_against` is gone (that helper was removed).
+jsonschema 0.17 compiles from `&'static Value`. Each official schema is `Box::leak`’d **once** when first compiled (`OnceCell`). A leak-free API needs jsonschema ≥0.26. Left on 0.17 to avoid pulling reqwest 0.12 alongside the workspace’s reqwest 0.11. The old per-call leak in `validate_json_against` is gone (that helper was removed).
 
-## `once_cell` vs `OnceLock`
+## `once_cell`
 
-`ga4gh_schemas` keeps `once_cell::OnceCell::get_or_try_init` so MSRV **1.75** holds. `OnceLock::get_or_try_init` needs Rust 1.80+.
+`ga4gh_schemas` uses `once_cell::OnceCell::get_or_try_init`. `std::sync::OnceLock::get_or_try_init` is still unstable (`once_cell_try`).
 
 ---
 
