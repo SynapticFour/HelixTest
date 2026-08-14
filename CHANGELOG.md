@@ -12,13 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TestStatus` (Pass / Fail / Skip); skips are excluded from levels, scores, and `--fail-level`.
 - `--compose-file` and WES `/service-info` health poll for `--start-ferrum`.
 - Workspace `rust-version = "1.75"`; packages `helixtest-common` / `helixtest-framework`.
+- Separate **Age** service vs env-gated **Crypt4GH** HTTP; `--only age`.
+- CI MSRV job (`cargo check` on 1.75); committed `Cargo.lock`.
 
 ### Changed
 
 - Single Cargo workspace at repo root; nested `helixtest/Cargo.toml` workspace removed.
 - HTTP: 5s connect / 30s request; GET retried twice; POST not retried.
 - CLI loads profile via `TestConfig::load` instead of mutating process env.
-- Local “Crypt4GH” suite documented as **age**; Passports remain `--mode ferrum+infra`.
+- Local “Crypt4GH” suite is a separate **Age** service; HMAC JWT requires `HELIXTEST_SHARED_SECRET` (no `test-secret` default).
+- Achieved level requires executed Level 0; L5-only suites report Level 0.
+- jsonschema 0.17 still leak-once per official schema (MSRV); `validate_json_against` removed.
 - Conformance runner no longer sets AVX2 / `target-cpu` rustflags.
 
 ### Fixed
@@ -29,6 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - L0 reachability requires 2xx or 401 (not any 4xx).
 - Africa federation uses `FERRUM_AFRICA_PEER_URL`; Auth L0 uses `auth_url`.
 
-See [helixtest/docs/known-limitations.md](helixtest/docs/known-limitations.md) for items not changed in this pass (HMAC `test-secret` fallback, Crypt4GH L5 via age, MSRV not CI-checked, gitignored lockfile).
+See [helixtest/docs/known-limitations.md](helixtest/docs/known-limitations.md) for remaining constraints (serial HTTP, live-stack cargo tests excluded from CI).
 
 ### Security

@@ -122,6 +122,7 @@ fn parse_service_name(name: &str) -> Option<ServiceKind> {
         "beacon" => Some(ServiceKind::Beacon),
         "htsget" => Some(ServiceKind::Htsget),
         "auth" => Some(ServiceKind::Auth),
+        "age" => Some(ServiceKind::Age),
         "crypt4gh" => Some(ServiceKind::Crypt4gh),
         "e2e" => Some(ServiceKind::E2e),
         "africa" => Some(ServiceKind::Africa),
@@ -139,6 +140,7 @@ fn all_services() -> Vec<ServiceKind> {
         ServiceKind::Beacon,
         ServiceKind::Htsget,
         ServiceKind::Auth,
+        ServiceKind::Age,
         ServiceKind::Crypt4gh,
         ServiceKind::E2e,
     ]
@@ -209,6 +211,14 @@ pub async fn run_all(
     let mut services: Vec<ServiceReport> = Vec::new();
     let mut executed_test_modules = Vec::new();
     let mut skipped_services = Vec::new();
+    for kind in [ServiceKind::Africa, ServiceKind::Infra] {
+        if enabled.remove(&kind) {
+            skipped_services.push(SkippedService {
+                service: kind,
+                reason: "use --mode ferrum-africa or --mode ferrum+infra".to_string(),
+            });
+        }
+    }
     let skip_auth = std::env::var("HELIXTEST_SKIP_AUTH")
         .map(|v| v.eq_ignore_ascii_case("true"))
         .unwrap_or(false);
@@ -255,6 +265,9 @@ pub async fn run_all(
                     auth::run_auth_checks(effective_mode, &features, &cfg, &client).await?
                 }
             }
+            ServiceKind::Age => {
+                crypt4gh::run_age_checks(effective_mode, &features, &cfg, &client).await?
+            }
             ServiceKind::Crypt4gh => {
                 crypt4gh::run_crypt4gh_checks(effective_mode, &features, &cfg, &client).await?
             }
@@ -262,7 +275,7 @@ pub async fn run_all(
                 e2e::run_e2e_checks(effective_mode, &features, &cfg, &client).await?
             }
             ServiceKind::Africa | ServiceKind::Infra => {
-                unreachable!("Africa/Infra are not in all_services(); use --mode")
+                unreachable!("stripped from enabled before the loop")
             }
         };
         executed_test_modules.push(service);
@@ -312,6 +325,14 @@ mod tests {
         assert!(enabled.contains(&ServiceKind::Auth));
         assert!(!enabled.contains(&ServiceKind::Tes));
         assert!(!enabled.contains(&ServiceKind::Trs));
+    }
+
+    #[test]
+    fn africa_in_enabled_services_is_parsed() {
+        let cfg = cfg_with_subset(&["wes", "africa"], &[]);
+        let enabled = enabled_services_from_config(&cfg);
+        assert!(enabled.contains(&ServiceKind::Africa));
+        assert!(enabled.contains(&ServiceKind::Wes));
     }
 
     #[test]

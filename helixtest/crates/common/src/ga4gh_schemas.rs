@@ -51,6 +51,8 @@ fn resolve_and_get_schema(yaml: &str, schema_name: &str, context: &str) -> Resul
 }
 
 fn compile_schema(schema: Value, name: &str) -> Result<JSONSchema> {
+    // jsonschema 0.17/0.18 require `'static` schema. Leak once per schema type
+    // (callers cache the compiled validator in OnceCell).
     let static_val: &'static Value = Box::leak(Box::new(schema));
     JSONSchema::compile(static_val).context(format!("Failed to compile {} schema", name))
 }

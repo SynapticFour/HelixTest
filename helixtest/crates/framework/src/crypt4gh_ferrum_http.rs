@@ -40,6 +40,46 @@ fn fail(
     TestCaseResult::fail(name, level, category, msg.into())
 }
 
+const MAX_TEST_OBJECT_BYTES: u64 = 8 * 1024 * 1024;
+
+async fn read_body_capped(
+    resp: reqwest::Response,
+    name: &str,
+    level: ComplianceLevel,
+    category: TestCategory,
+) -> Result<bytes::Bytes, TestCaseResult> {
+    if let Some(n) = resp.content_length() {
+        if n > MAX_TEST_OBJECT_BYTES {
+            return Err(fail(
+                name,
+                level,
+                category,
+                format!(
+                    "response Content-Length {n} exceeds test cap of {MAX_TEST_OBJECT_BYTES} bytes"
+                ),
+            ));
+        }
+    }
+    match resp.bytes().await {
+        Ok(b) if (b.len() as u64) > MAX_TEST_OBJECT_BYTES => Err(fail(
+            name,
+            level,
+            category,
+            format!(
+                "response body {} bytes exceeds test cap of {MAX_TEST_OBJECT_BYTES}",
+                b.len()
+            ),
+        )),
+        Ok(b) => Ok(b),
+        Err(e) => Err(fail(
+            name,
+            level,
+            category,
+            format!("reading response body: {e}"),
+        )),
+    }
+}
+
 fn drs_object_url(cfg: &TestConfig, object_id: &str) -> String {
     format!(
         "{}/objects/{}",
@@ -271,16 +311,16 @@ pub async fn ferrum_crypt4gh_drs_rewrap(cfg: &TestConfig, client: &HttpClient) -
         );
     }
 
-    let ciphertext = match resp.bytes().await {
+    let ciphertext = match read_body_capped(
+        resp,
+        NAME,
+        ComplianceLevel::Level3,
+        TestCategory::Interoperability,
+    )
+    .await
+    {
         Ok(b) => b,
-        Err(e) => {
-            return fail(
-                NAME,
-                ComplianceLevel::Level3,
-                TestCategory::Interoperability,
-                format!("reading rewrap response body: {}", e),
-            );
-        }
+        Err(t) => return t,
     };
 
     let plaintext = match decrypt_crypt4gh_body(&ciphertext, &priv_blob) {
@@ -437,16 +477,16 @@ pub async fn ferrum_crypt4gh_plain_matches_rewrap(
             ),
         );
     }
-    let rewrap_ct = match rewrap_resp.bytes().await {
+    let rewrap_ct = match read_body_capped(
+        rewrap_resp,
+        NAME,
+        ComplianceLevel::Level3,
+        TestCategory::Checksum,
+    )
+    .await
+    {
         Ok(b) => b,
-        Err(e) => {
-            return fail(
-                NAME,
-                ComplianceLevel::Level3,
-                TestCategory::Checksum,
-                format!("rewrap body: {}", e),
-            );
-        }
+        Err(t) => return t,
     };
     let rewrap_plain = match decrypt_crypt4gh_body(&rewrap_ct, &priv_blob) {
         Ok(p) => p,
@@ -487,16 +527,16 @@ pub async fn ferrum_crypt4gh_plain_matches_rewrap(
             ),
         );
     }
-    let plain_bytes = match plain_resp.bytes().await {
+    let plain_bytes = match read_body_capped(
+        plain_resp,
+        NAME,
+        ComplianceLevel::Level3,
+        TestCategory::Checksum,
+    )
+    .await
+    {
         Ok(b) => b,
-        Err(e) => {
-            return fail(
-                NAME,
-                ComplianceLevel::Level3,
-                TestCategory::Checksum,
-                format!("plain body: {}", e),
-            );
-        }
+        Err(t) => return t,
     };
     let hash_plain = sha256_bytes(&plain_bytes);
 

@@ -59,8 +59,11 @@ enum ServiceArg {
     Beacon,
     Htsget,
     Auth,
+    Age,
     Crypt4gh,
     E2e,
+    Africa,
+    Infra,
 }
 
 impl ServiceArg {
@@ -73,8 +76,11 @@ impl ServiceArg {
             ServiceArg::Beacon => ServiceKind::Beacon,
             ServiceArg::Htsget => ServiceKind::Htsget,
             ServiceArg::Auth => ServiceKind::Auth,
+            ServiceArg::Age => ServiceKind::Age,
             ServiceArg::Crypt4gh => ServiceKind::Crypt4gh,
             ServiceArg::E2e => ServiceKind::E2e,
+            ServiceArg::Africa => ServiceKind::Africa,
+            ServiceArg::Infra => ServiceKind::Infra,
         }
     }
 }

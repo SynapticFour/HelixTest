@@ -47,6 +47,19 @@ jobs:
       - name: Test
         run: cargo test --workspace --exclude api-tests --exclude auth-tests --exclude e2e-tests --exclude workflow-tests
 
+  msrv:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Rust 1.75
+        uses: dtolnay/rust-toolchain@1.75.0
+      - uses: Swatinem/rust-cache@v2
+      - name: Install libsodium
+        run: sudo apt-get update && sudo apt-get install -y libsodium-dev
+      - name: MSRV check
+        run: cargo check --workspace --all-targets
+
   build-arm64:
     if: |
       github.actor != 'dependabot[bot]' &&

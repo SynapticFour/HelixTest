@@ -18,28 +18,62 @@ fn write_dummy_fastq() -> Result<NamedTempFile> {
     Ok(f)
 }
 
+pub async fn run_age_checks(
+    _mode: Mode,
+    _features: &Features,
+    _cfg: &TestConfig,
+    _client: &HttpClient,
+) -> Result<ServiceReport> {
+    Ok(ServiceReport {
+        service: ServiceKind::Age,
+        tests: vec![
+            TestCaseResult::pass(
+                "Local age library available",
+                ComplianceLevel::Level0,
+                TestCategory::Other,
+            ),
+            level5_roundtrip_checksum().await,
+            level5_partial_read().await,
+            level5_corrupted_header_fails().await,
+            level5_wrong_key_fails().await,
+            level5_corrupted_ciphertext_fails().await,
+            level5_truncated_ciphertext_fails().await,
+        ],
+    })
+}
+
 pub async fn run_crypt4gh_checks(
     _mode: Mode,
     _features: &Features,
     cfg: &TestConfig,
     client: &HttpClient,
 ) -> Result<ServiceReport> {
-    let mut tests = Vec::new();
-    tests.push(level5_roundtrip_checksum().await);
-    tests.push(level5_partial_read().await);
-    tests.push(level5_corrupted_header_fails().await);
-    tests.push(level5_wrong_key_fails().await);
-    tests.push(level5_corrupted_ciphertext_fails().await);
-    tests.push(level5_truncated_ciphertext_fails().await);
-
-    // Optional Ferrum HTTP: rewrap vs decrypt_plain (gated by env; does not affect default CI).
-    tests.push(crate::crypt4gh_ferrum_http::ferrum_crypt4gh_drs_rewrap(cfg, client).await);
-    tests
-        .push(crate::crypt4gh_ferrum_http::ferrum_crypt4gh_plain_matches_rewrap(cfg, client).await);
-
+    let http_on = matches!(
+        std::env::var("HELIXTEST_FEATURE_CRYPT4GH_REWRAP")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true")),
+        Ok(true)
+    );
+    let l0 = if http_on {
+        TestCaseResult::pass(
+            "Crypt4GH HTTP checks enabled",
+            ComplianceLevel::Level0,
+            TestCategory::Other,
+        )
+    } else {
+        TestCaseResult::skip(
+            "Crypt4GH HTTP checks enabled",
+            ComplianceLevel::Level0,
+            TestCategory::Other,
+            "set HELIXTEST_FEATURE_CRYPT4GH_REWRAP=1",
+        )
+    };
     Ok(ServiceReport {
         service: ServiceKind::Crypt4gh,
-        tests,
+        tests: vec![
+            l0,
+            crate::crypt4gh_ferrum_http::ferrum_crypt4gh_drs_rewrap(cfg, client).await,
+            crate::crypt4gh_ferrum_http::ferrum_crypt4gh_plain_matches_rewrap(cfg, client).await,
+        ],
     })
 }
 

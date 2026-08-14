@@ -8,11 +8,9 @@ authors.workspace = true
 
 [dev-dependencies]
 anyhow = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 tokio = { workspace = true }
-chrono = { workspace = true }
 common = { path = "../common", package = "helixtest-common" }
+framework = { path = "../framework", package = "helixtest-framework" }
 
 [lib]
 path = "src/lib.rs"

@@ -8,7 +8,7 @@ beacon = "http://localhost:18080/ga4gh/beacon/v2"
 auth = "http://127.0.0.1:8180"
 
 [subset]
-disabled_services = ["wes", "tes", "trs", "beacon", "htsget", "auth", "crypt4gh", "e2e"]
+disabled_services = ["wes", "tes", "trs", "beacon", "htsget", "auth", "age", "crypt4gh", "e2e"]
 
 [features]
 supports_beacon_v2 = true

@@ -16,7 +16,7 @@ htsget = ""
 
 [subset]
 enabled_services = ["wes", "drs", "auth"]
-disabled_services = ["tes", "trs", "beacon", "htsget", "crypt4gh", "e2e"]
+disabled_services = ["tes", "trs", "beacon", "htsget", "age", "crypt4gh", "e2e"]
 
 [auth_checks]
 mode = "token-protected-endpoints"

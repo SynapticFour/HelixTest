@@ -50,6 +50,7 @@ pub enum ServiceKind {
     Beacon,
     Htsget,
     Auth,
+    Age,
     Crypt4gh,
     E2e,
     Africa,
@@ -67,10 +68,11 @@ impl ServiceKind {
             ServiceKind::Beacon => 4,
             ServiceKind::Htsget => 5,
             ServiceKind::Auth => 6,
-            ServiceKind::Crypt4gh => 7,
-            ServiceKind::E2e => 8,
-            ServiceKind::Africa => 9,
-            ServiceKind::Infra => 10,
+            ServiceKind::Age => 7,
+            ServiceKind::Crypt4gh => 8,
+            ServiceKind::E2e => 9,
+            ServiceKind::Africa => 10,
+            ServiceKind::Infra => 11,
         }
     }
 }
@@ -85,6 +87,7 @@ impl fmt::Display for ServiceKind {
             ServiceKind::Beacon => "Beacon",
             ServiceKind::Htsget => "htsget",
             ServiceKind::Auth => "Auth",
+            ServiceKind::Age => "Age",
             ServiceKind::Crypt4gh => "Crypt4GH",
             ServiceKind::E2e => "E2E",
             ServiceKind::Africa => "Africa",
@@ -229,12 +232,25 @@ pub struct SkippedService {
 }
 
 impl ServiceReport {
-    /// Highest N such that every *executed* (non-skip) test at level N passed.
-    /// Empty or skip-only levels are ignored and do not block a higher N.
-    /// Failures at N stop the climb (service level is the last fully-green N).
+    /// Highest N such that Level 0 was executed and passed, and every executed
+    /// (non-skip) test at each higher level that has tests also passed.
+    /// Empty or skip-only levels in between do not block a higher N.
+    /// If the service ran tests but none at Level 0, the achieved level is 0
+    /// (a Level-5-only suite does not claim Level 5).
     pub fn achieved_level(&self) -> ComplianceLevel {
+        let l0: Vec<&TestCaseResult> = self
+            .tests
+            .iter()
+            .filter(|t| t.level == ComplianceLevel::Level0 && t.is_executed())
+            .collect();
+        if l0.is_empty() || l0.iter().any(|t| t.status != TestStatus::Pass) {
+            return ComplianceLevel::Level0;
+        }
         let mut max_level = ComplianceLevel::Level0;
-        for lvl in ComplianceLevel::all() {
+        for lvl in ComplianceLevel::all()
+            .into_iter()
+            .filter(|l| *l != ComplianceLevel::Level0)
+        {
             let executed: Vec<&TestCaseResult> = self
                 .tests
                 .iter()
@@ -635,12 +651,20 @@ mod tests {
         };
         let wes = ServiceReport {
             service: ServiceKind::Wes,
-            tests: vec![case(
-                "L2",
-                ComplianceLevel::Level2,
-                TestStatus::Pass,
-                TestCategory::Lifecycle,
-            )],
+            tests: vec![
+                case(
+                    "L0",
+                    ComplianceLevel::Level0,
+                    TestStatus::Pass,
+                    TestCategory::Other,
+                ),
+                case(
+                    "L2",
+                    ComplianceLevel::Level2,
+                    TestStatus::Pass,
+                    TestCategory::Lifecycle,
+                ),
+            ],
         };
         let overall = OverallReport {
             services: vec![skipped, wes],
@@ -677,5 +701,19 @@ mod tests {
             .find(|(c, _)| *c == TestCategory::Interoperability)
             .unwrap();
         assert_eq!(interop.1, CoverageState::Missing);
+    }
+
+    #[test]
+    fn only_l5_without_l0_is_level_0() {
+        let report = ServiceReport {
+            service: ServiceKind::Crypt4gh,
+            tests: vec![case(
+                "age roundtrip",
+                ComplianceLevel::Level5,
+                TestStatus::Pass,
+                TestCategory::Robustness,
+            )],
+        };
+        assert_eq!(report.achieved_level(), ComplianceLevel::Level0);
     }
 }

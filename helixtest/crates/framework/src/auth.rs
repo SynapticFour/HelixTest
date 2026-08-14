@@ -2,26 +2,27 @@
 //! token-protected endpoints. This is **not** GA4GH Passports/OIDC; Passport checks live in
 //! `--mode ferrum+infra` (`infra.rs`).
 
+use crate::{level0_http, Features, Mode};
 use anyhow::Result;
 use chrono::Duration;
 use common::auth::build_jwt;
 use common::config::TestConfig;
 use common::http::HttpClient;
 use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCaseResult, TestCategory};
-use tracing::warn;
 
-use crate::{level0_http, Features, Mode};
+fn hmac_secret() -> Option<String> {
+    std::env::var("HELIXTEST_SHARED_SECRET")
+        .ok()
+        .filter(|s| !s.is_empty())
+}
 
-fn auth_secret() -> String {
-    match std::env::var("HELIXTEST_SHARED_SECRET") {
-        Ok(s) if !s.is_empty() => s,
-        _ => {
-            warn!(
-                "HELIXTEST_SHARED_SECRET unset; using built-in HMAC fixture secret (demo stacks only)"
-            );
-            "test-secret".to_owned()
-        }
-    }
+fn skip_hmac_fixture(name: &str) -> TestCaseResult {
+    TestCaseResult::skip(
+        name,
+        ComplianceLevel::Level4,
+        TestCategory::Security,
+        "HELIXTEST_SHARED_SECRET unset; HMAC JWT fixture not run (not Passports)",
+    )
 }
 
 fn auth_test_object_id() -> String {
@@ -81,6 +82,10 @@ async fn level0_auth_url(cfg: &TestConfig, client: &HttpClient) -> TestCaseResul
 }
 
 async fn level4_valid_token_grants_access(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
+    const NAME: &str = "Auth (HMAC JWT fixture): valid token grants DRS access";
+    let Some(secret) = hmac_secret() else {
+        return skip_hmac_fixture(NAME);
+    };
     let result = async {
         let token = build_jwt(
             "https://auth.ga4gh.test",
@@ -88,7 +93,7 @@ async fn level4_valid_token_grants_access(cfg: &TestConfig, client: &HttpClient)
             "drs",
             "drs.read",
             Duration::minutes(5),
-            &auth_secret(),
+            &secret,
         )?;
         let url = format!(
             "{}/objects/{}",
@@ -106,7 +111,7 @@ async fn level4_valid_token_grants_access(cfg: &TestConfig, client: &HttpClient)
     .await;
 
     TestCaseResult::from_outcome(
-        "Auth (HMAC JWT fixture): valid token grants DRS access",
+        NAME,
         ComplianceLevel::Level4,
         TestCategory::Security,
         result,
@@ -237,6 +242,10 @@ async fn run_token_protected_endpoint_checks(
 }
 
 async fn level4_expired_token_rejected(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
+    const NAME: &str = "Auth (HMAC JWT fixture): expired token rejected";
+    let Some(secret) = hmac_secret() else {
+        return skip_hmac_fixture(NAME);
+    };
     let result = async {
         let token = build_jwt(
             "https://auth.ga4gh.test",
@@ -244,7 +253,7 @@ async fn level4_expired_token_rejected(cfg: &TestConfig, client: &HttpClient) ->
             "drs",
             "drs.read",
             Duration::minutes(-5),
-            &auth_secret(),
+            &secret,
         )?;
         let url = format!(
             "{}/objects/{}",
@@ -262,7 +271,7 @@ async fn level4_expired_token_rejected(cfg: &TestConfig, client: &HttpClient) ->
     .await;
 
     TestCaseResult::from_outcome(
-        "Auth (HMAC JWT fixture): expired token rejected",
+        NAME,
         ComplianceLevel::Level4,
         TestCategory::Security,
         result,
@@ -270,6 +279,10 @@ async fn level4_expired_token_rejected(cfg: &TestConfig, client: &HttpClient) ->
 }
 
 async fn level4_wrong_scope_denied(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
+    const NAME: &str = "Auth (HMAC JWT fixture): wrong scope denied";
+    let Some(secret) = hmac_secret() else {
+        return skip_hmac_fixture(NAME);
+    };
     let result = async {
         let token = build_jwt(
             "https://auth.ga4gh.test",
@@ -277,7 +290,7 @@ async fn level4_wrong_scope_denied(cfg: &TestConfig, client: &HttpClient) -> Tes
             "drs",
             "wes.run",
             Duration::minutes(5),
-            &auth_secret(),
+            &secret,
         )?;
         let url = format!(
             "{}/objects/{}",
@@ -295,7 +308,7 @@ async fn level4_wrong_scope_denied(cfg: &TestConfig, client: &HttpClient) -> Tes
     .await;
 
     TestCaseResult::from_outcome(
-        "Auth (HMAC JWT fixture): wrong scope denied",
+        NAME,
         ComplianceLevel::Level4,
         TestCategory::Security,
         result,

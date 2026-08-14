@@ -34,7 +34,7 @@ Cargo packages are named `helixtest-common` and `helixtest-framework` (Rust crat
 │  • Resolves effective mode (generic vs Ferrum, auto-detect from WES)     │
 │  • Loads features from profiles/<profile>.toml or ferrum.toml             │
 │  • Runs per-service checks in canonical order:                            │
-│    WES → TES → DRS → TRS → Beacon → htsget → Auth → Crypt4GH → E2E       │
+│    WES → TES → DRS → TRS → Beacon → htsget → Auth → Age → Crypt4GH → E2E │
 │  • Returns OverallReport { services: Vec<ServiceReport> }                │
 └─────────────────────────────────────────────────────────────────────────┘
           │                │                │                │
@@ -60,7 +60,7 @@ Cargo packages are named `helixtest-common` and `helixtest-framework` (Rust crat
 │  • auth      – HMAC-SHA256 JWT fixture (not Passports)                   │
 │  • crypto    – age encrypt/decrypt for local “Crypt4GH-style” checks     │
 │  • logging   – tracing init with RUST_LOG / --verbose                    │
-│  • schemas   – validate_json_against<T> (jsonschema); ga4gh_schemas      │
+│  • schemas   – assert_required_string_field; ga4gh_schemas (OpenAPI)     │
 └─────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
@@ -75,7 +75,7 @@ Cargo packages are named `helixtest-common` and `helixtest-framework` (Rust crat
 1. **Config** – Endpoints come from `--profile` / `HELIXTEST_PROFILE` → `helixtest/profiles/<name>.toml`, or `HELIXTEST_CONFIG`, or `helixtest-config.toml`, or `WES_URL`/… environment variables. The CLI does not `set_var` the profile.
 2. **Features** – Framework loads `[features]` from the same profile (or Ferrum mode) to enable/disable tests (e.g. `supports_beacon_v2`, `strict_drs_checksums`, `supports_scatter_gather`). Missing/invalid profiles are errors.
 3. **Execution** – Each service module (e.g. `wes.rs`) returns a `ServiceReport` with `TestCaseResult` values (`status` Pass/Fail/Skip, level, category, weight).
-4. **Aggregation** – `OverallReport` aggregates all services; the CLI can filter by `--only` and then render table/JSON/scores/coverage. Canonical order is WES, TES, DRS, TRS, Beacon, htsget, Auth, Crypt4GH, E2E.
+4. **Aggregation** – `OverallReport` aggregates all services; the CLI can filter by `--only` and then render table/JSON/scores/coverage. Canonical order is WES, TES, DRS, TRS, Beacon, htsget, Auth, Age, Crypt4GH, E2E.
 5. **Exit code** – CLI exits 1 if any test **Failed** or if `--fail-level N` is set and overall level is below N. Skips are not failures.
 
 ## Test Crates vs Framework

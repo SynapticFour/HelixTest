@@ -25,10 +25,11 @@ Each test is assigned a **compliance level** that reflects the kind of requireme
 
 ## Per-Service Achieved Level
 
-A **service’s achieved level** is the highest level N such that **every executed (non-skip)** test at level N for that service **passed**. Empty or skip-only levels do **not** block a higher N. If any executed test at level N fails, the service’s level stays at the last fully-green N.
+A **service’s achieved level** is the highest level N such that **Level 0 was executed and passed**, and every executed (non-skip) test at each higher level that has tests also passed. Empty or skip-only levels in between do **not** block a higher N. If any executed test at level N fails, the service’s level stays at the last fully-green N.
 
 - Example: WES has Level 0 and 1 tests passing, one Level 2 test failing → WES achieved level = 1.
-- Skip-only Level 4 does not prevent Level 5 from counting, and does not pin the service at 3.
+- A suite with **only Level 5** tests (no executed Level 0) achieves **Level 0**. Local age checks therefore include an explicit Level 0 “library available” pass.
+- Skip-only Level 4 does not prevent Level 5 from counting once Level 0 passed, and does not pin the service at 3.
 
 ## Overall Level
 
@@ -81,7 +82,7 @@ Categories come from each test’s `category` field and help you see which areas
 |--------|------------|
 | **Test status** | Pass, Fail, or Skip. Skip is not a pass. |
 | **Test level** | 0–5, assigned per test (reachability → robustness). |
-| **Service achieved level** | Max level N such that all *executed* tests at level N passed; empty/skip-only levels do not block higher N. |
+| **Service achieved level** | Highest N with executed L0 passing, then all executed tests at each higher populated level passing. L5-only → 0. |
 | **Overall level** | Min of executed services’ achieved levels. |
 | **Service score** | Weighted fraction of executed tests (skips and `weight <= 0` omitted). |
 | **Overall score** | Average of service scores. |

@@ -24,3 +24,4 @@ common = { path = "../common", package = "helixtest-common" }
 url = { workspace = true }
 crypt4gh = { workspace = true }
 base64 = { workspace = true }
+bytes = "1"

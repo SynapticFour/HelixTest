@@ -157,7 +157,7 @@ From the **repository root** (`HelixTest/`; single Cargo workspace):
 cargo run --bin helixtest -- --all
 ```
 
-**Options:** `--report table|json|scores|coverage` (default: table), `--mode generic|ferrum|ferrum-africa|ferrum+infra`, `--profile <name>`, `--start-ferrum` (polls WES `/service-info`; optional `--compose-file`, else `helixtest/docker/docker-compose.yml` if present), `--fail-level <N>`, `--only <service>` (repeatable: `wes`, `tes`, `drs`, `trs`, `beacon`, `htsget`, `auth`, `crypt4gh`, `e2e`), `--verbose`.
+**Options:** `--report table|json|scores|coverage` (default: table), `--mode generic|ferrum|ferrum-africa|ferrum+infra`, `--profile <name>`, `--start-ferrum` (polls WES `/service-info`; optional `--compose-file`, else `helixtest/docker/docker-compose.yml` if present), `--fail-level <N>`, `--only <service>` (repeatable: `wes`, `tes`, `drs`, `trs`, `beacon`, `htsget`, `auth`, `age`, `crypt4gh`, `e2e`, `africa`, `infra`), `--verbose`.
 
 **Optional JSON diagnostics (not scored):** `HELIXTEST_REPORT_DIAGNOSTICS=true` or `1` adds fields such as `suite_duration_ms` to the full JSON report (`--report json`); compliance levels and scores are unchanged.
 
