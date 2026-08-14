@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `TestStatus` (Pass / Fail / Skip); skips are excluded from levels, scores, and `--fail-level`.
 - `--compose-file` and WES `/service-info` health poll for `--start-ferrum`.
-- Workspace `rust-version = "1.85"`; packages `helixtest-common` / `helixtest-framework`.
+- Workspace `rust-version = "1.88"`; packages `helixtest-common` / `helixtest-framework`.
 - Separate **Age** service vs env-gated **Crypt4GH** HTTP; `--only age`.
-- CI MSRV job (`cargo check --locked` on 1.85); committed `Cargo.lock`.
+- CI MSRV job (`cargo check --locked` on 1.88); committed `Cargo.lock`.
 
 ### Changed
 
