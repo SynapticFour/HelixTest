@@ -3,7 +3,7 @@ use common::config::TestConfig;
 use common::http::HttpClient;
 use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCaseResult, TestCategory};
 
-use crate::{Features, Mode};
+use crate::{level0_http, Features, Mode};
 
 pub async fn run_trs_checks(
     _mode: Mode,
@@ -24,26 +24,10 @@ pub async fn run_trs_checks(
 
 async fn level0_reachable(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
     let url = format!("{}/tools", cfg.services.trs_url.trim_end_matches('/'));
-    let res = client.inner().get(&url).send().await;
-    match res {
-        Ok(resp) => TestCaseResult {
-            name: "TRS /tools reachable".into(),
-            level: ComplianceLevel::Level0,
-            passed: resp.status().is_success() || resp.status().is_client_error(),
-            error: (!resp.status().is_success() && !resp.status().is_client_error())
-                .then(|| format!("Unexpected HTTP status: {}", resp.status())),
-            category: TestCategory::Other,
-            weight: 1.0,
-        },
-        Err(e) => TestCaseResult {
-            name: "TRS /tools reachable".into(),
-            level: ComplianceLevel::Level0,
-            passed: false,
-            error: Some(e.to_string()),
-            category: TestCategory::Other,
-            weight: 1.0,
-        },
-    }
+    level0_http(
+        "TRS /tools reachable",
+        client.inner().get(&url).send().await,
+    )
 }
 
 async fn level1_schema_and_fields(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -80,14 +64,12 @@ async fn level1_schema_and_fields(cfg: &TestConfig, client: &HttpClient) -> Test
     }
     .await;
 
-    TestCaseResult {
-        name: "TRS tools and versions schema".into(),
-        level: ComplianceLevel::Level1,
-        passed: res.is_ok(),
-        error: res.err().map(|e| e.to_string()),
-        category: TestCategory::Schema,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "TRS tools and versions schema",
+        ComplianceLevel::Level1,
+        TestCategory::Schema,
+        res,
+    )
 }
 
 async fn level2_descriptor_retrieval(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -118,7 +100,6 @@ async fn level2_descriptor_retrieval(cfg: &TestConfig, client: &HttpClient) -> T
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("ToolVersion missing id: {}", first_version))?;
 
-        // Attempt to fetch a CWL descriptor; implementations may support other types too.
         let desc_url = format!(
             "{}/tools/{}/versions/{}/PLAIN_CWL/descriptor",
             cfg.services.trs_url.trim_end_matches('/'),
@@ -146,12 +127,10 @@ async fn level2_descriptor_retrieval(cfg: &TestConfig, client: &HttpClient) -> T
     }
     .await;
 
-    TestCaseResult {
-        name: "TRS descriptor retrieval".into(),
-        level: ComplianceLevel::Level2,
-        passed: res.is_ok(),
-        error: res.err().map(|e| e.to_string()),
-        category: TestCategory::Interoperability,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "TRS descriptor retrieval",
+        ComplianceLevel::Level2,
+        TestCategory::Interoperability,
+        res,
+    )
 }

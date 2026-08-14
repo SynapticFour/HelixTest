@@ -108,7 +108,7 @@ fn validate_state_sequence(states: &[String]) -> Result<()> {
     const RUNNING: &str = "RUNNING";
 
     let first = &states[0];
-    let last = states.last().unwrap();
+    let last = states.last().expect("states non-empty after empty check");
 
     // First state must not be terminal
     if is_terminal_state(first) {
@@ -177,4 +177,42 @@ pub async fn fetch_wes_run_output(
     v.get("outputs")
         .cloned()
         .ok_or_else(|| anyhow::anyhow!("Missing outputs in WES run response: {}", v))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::http::HttpClient;
+    use std::time::Duration;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[tokio::test]
+    async fn poll_times_out_with_clear_error_when_run_stuck() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/runs/stuck/status"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "run_id": "stuck",
+                "state": "QUEUED"
+            })))
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::with_timeout(Duration::from_secs(2));
+        let err = poll_wes_run_until_terminal(
+            &client,
+            &server.uri(),
+            "stuck",
+            Duration::from_millis(400),
+            Duration::from_millis(50),
+        )
+        .await
+        .unwrap_err()
+        .to_string();
+        assert!(
+            err.to_lowercase().contains("timed out") || err.to_lowercase().contains("timeout"),
+            "unexpected error: {err}"
+        );
+    }
 }

@@ -1,21 +1,11 @@
 use anyhow::Result;
 use common::config::TestConfig;
 use common::http::HttpClient;
-use common::util::sha256_file;
+use common::util::{sha256_file_if_fresh, test_data_dir};
 use common::workflow::{
     fetch_wes_run_output, poll_wes_run_until_terminal, submit_wes_run, WesRunRequest,
 };
-use std::path::PathBuf;
-use std::time::Duration;
-
-fn test_data_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("test-data")
-}
+use std::time::{Duration, SystemTime};
 
 struct WorkflowCase<'a> {
     name: &'a str,
@@ -60,6 +50,7 @@ fn workflow_cases<'a>() -> Vec<WorkflowCase<'a>> {
 }
 
 async fn run_workflow_case(case: &WorkflowCase<'_>) -> Result<()> {
+    let submitted_at = SystemTime::now();
     let cfg = TestConfig::from_env_or_file()?;
     let client = HttpClient::new();
 
@@ -113,14 +104,14 @@ async fn run_workflow_case(case: &WorkflowCase<'_>) -> Result<()> {
         );
     }
 
-    let root = test_data_dir();
+    let root = test_data_dir()?;
     let expected_checksum_path = root.join(case.expected_checksum_file);
     let expected_checksum = std::fs::read_to_string(&expected_checksum_path)?
         .trim()
         .to_owned();
 
     let produced_file = root.join(case.expected_output_file);
-    let actual_checksum = sha256_file(&produced_file)?;
+    let actual_checksum = sha256_file_if_fresh(&produced_file, submitted_at)?;
     if !actual_checksum.eq_ignore_ascii_case(&expected_checksum) {
         anyhow::bail!(
             "Workflow {} output checksum mismatch: expected {}, got {}",
@@ -175,6 +166,7 @@ async fn failing_workflow_ends_in_error_state() -> Result<()> {
 
 #[tokio::test]
 async fn scatter_gather_workflow_produces_expected_checksum() -> Result<()> {
+    let submitted_at = SystemTime::now();
     let cfg = TestConfig::from_env_or_file()?;
     let client = HttpClient::new();
 
@@ -222,14 +214,14 @@ async fn scatter_gather_workflow_produces_expected_checksum() -> Result<()> {
         )
     })?;
 
-    let root = test_data_dir();
+    let root = test_data_dir()?;
     let expected_checksum_path = root.join(case.expected_checksum_file);
     let expected_checksum = std::fs::read_to_string(&expected_checksum_path)?
         .trim()
         .to_owned();
 
     let produced_file = root.join(case.expected_output_file);
-    let actual_checksum = sha256_file(&produced_file)?;
+    let actual_checksum = sha256_file_if_fresh(&produced_file, submitted_at)?;
     assert_eq!(
         actual_checksum.to_lowercase(),
         expected_checksum.to_lowercase(),

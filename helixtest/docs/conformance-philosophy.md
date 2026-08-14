@@ -28,7 +28,7 @@ If you need throughput or latency regression gates, use a separate benchmark or 
 
 ## Crypt4GH
 
-- Optional Ferrum HTTP paths stay **feature-gated** (`HELIXTEST_FEATURE_CRYPT4GH_*`). Local Crypt4GH tests assert **integrity and failure modes** (wrong key, corruption, truncation), not transfer speed.
+- Optional Ferrum HTTP paths stay **feature-gated** (`HELIXTEST_FEATURE_CRYPT4GH_*`). Local checks use **age** (not Crypt4GH containers) and assert **integrity and failure modes** (wrong key, corruption, truncation), not transfer speed.
 
 ## Reporting diagnostics
 

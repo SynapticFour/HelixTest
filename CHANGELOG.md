@@ -9,8 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `TestStatus` (Pass / Fail / Skip); skips are excluded from levels, scores, and `--fail-level`.
+- `--compose-file` and WES `/service-info` health poll for `--start-ferrum`.
+- Workspace `rust-version = "1.75"`; packages `helixtest-common` / `helixtest-framework`.
+
 ### Changed
 
+- Single Cargo workspace at repo root; nested `helixtest/Cargo.toml` workspace removed.
+- HTTP: 5s connect / 30s request; GET retried twice; POST not retried.
+- CLI loads profile via `TestConfig::load` instead of mutating process env.
+- Local “Crypt4GH” suite documented as **age**; Passports remain `--mode ferrum+infra`.
+- Conformance runner no longer sets AVX2 / `target-cpu` rustflags.
+
 ### Fixed
+
+- Skip results no longer count as passes; `weight <= 0` omitted from scores.
+- TES/E2E checksums no longer green on stale local files or missing goldens.
+- WES timeout-robustness no longer fails a fast stack; scatter/gather gated on `supports_scatter_gather`.
+- L0 reachability requires 2xx or 401 (not any 4xx).
+- Africa federation uses `FERRUM_AFRICA_PEER_URL`; Auth L0 uses `auth_url`.
+
+See [helixtest/docs/known-limitations.md](helixtest/docs/known-limitations.md) for items not changed in this pass (HMAC `test-secret` fallback, Crypt4GH L5 via age, MSRV not CI-checked, gitignored lockfile).
 
 ### Security

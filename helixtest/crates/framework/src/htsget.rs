@@ -11,6 +11,7 @@ use common::ga4gh_schemas::{
 };
 use common::http::HttpClient;
 use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCaseResult, TestCategory};
+use common::util::percent_encode_path_segment;
 use serde_json::Value;
 use tracing::info;
 use url::Url;
@@ -107,14 +108,7 @@ fn skip(
 ) -> TestCaseResult {
     let msg = msg.into();
     info!(test = name, reason = %msg, "htsget check skipped");
-    TestCaseResult {
-        name: name.to_string(),
-        level,
-        passed: true,
-        error: Some(msg),
-        category,
-        weight: 1.0,
-    }
+    TestCaseResult::skip(name, level, category, msg)
 }
 
 fn fail(
@@ -123,14 +117,7 @@ fn fail(
     category: TestCategory,
     msg: impl Into<String>,
 ) -> TestCaseResult {
-    TestCaseResult {
-        name: name.to_string(),
-        level,
-        passed: false,
-        error: Some(msg.into()),
-        category,
-        weight: 1.0,
-    }
+    TestCaseResult::fail(name, level, category, msg.into())
 }
 
 fn reads_object_id() -> String {
@@ -142,19 +129,6 @@ fn reads_object_id() -> String {
 fn variants_object_id() -> String {
     std::env::var("HTSGET_VARIANTS_OBJECT_ID")
         .unwrap_or_else(|_| DEFAULT_VARIANTS_OBJECT_ID.to_string())
-}
-
-fn urlencoding_encode_path_segment(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for b in s.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(b as char)
-            }
-            _ => out.push_str(&format!("%{:02X}", b)),
-        }
-    }
-    out
 }
 
 fn htsget_error_code(v: &Value) -> Option<&str> {
@@ -309,14 +283,7 @@ async fn level0_reads_service_info(base: &str, client: &HttpClient) -> TestCaseR
     let name = "htsget reads /reads/service-info (htsget 1.3.0)";
     match fetch_json(client, &url).await {
         Ok((status, _, v)) if status.is_success() => match validate_reads_service_info_response(&v) {
-            Ok(()) => TestCaseResult {
-                name: name.into(),
-                level: ComplianceLevel::Level0,
-                passed: true,
-                error: None,
-                category: TestCategory::Schema,
-                weight: 1.0,
-            },
+            Ok(()) => TestCaseResult::pass(name, ComplianceLevel::Level0, TestCategory::Schema),
             Err(e) => fail(name, ComplianceLevel::Level0, TestCategory::Schema, e),
         },
         Ok((status, text, _)) => fail(
@@ -339,14 +306,7 @@ async fn level0_variants_service_info(base: &str, client: &HttpClient) -> TestCa
     let name = "htsget variants /variants/service-info (htsget 1.3.0)";
     match fetch_json(client, &url).await {
         Ok((status, _, v)) if status.is_success() => match validate_variants_service_info_response(&v) {
-            Ok(()) => TestCaseResult {
-                name: name.into(),
-                level: ComplianceLevel::Level0,
-                passed: true,
-                error: None,
-                category: TestCategory::Schema,
-                weight: 1.0,
-            },
+            Ok(()) => TestCaseResult::pass(name, ComplianceLevel::Level0, TestCategory::Schema),
             Err(e) => fail(name, ComplianceLevel::Level0, TestCategory::Schema, e),
         },
         Ok((status, text, _)) => fail(
@@ -369,7 +329,7 @@ async fn level1_get_reads_ticket(base: &str, client: &HttpClient) -> TestCaseRes
     let url = format!(
         "{}/reads/{}",
         base.trim_end_matches('/'),
-        urlencoding_encode_path_segment(&id)
+        percent_encode_path_segment(&id)
     );
     let name = "htsget GET reads ticket (BAM + DRS stream URL)";
     let resp = match client.inner().get(&url).send().await {
@@ -459,14 +419,7 @@ async fn level1_get_reads_ticket(base: &str, client: &HttpClient) -> TestCaseRes
             ),
         );
     }
-    TestCaseResult {
-        name: name.into(),
-        level: ComplianceLevel::Level1,
-        passed: true,
-        error: None,
-        category: TestCategory::Schema,
-        weight: 1.0,
-    }
+    TestCaseResult::pass(name, ComplianceLevel::Level1, TestCategory::Schema)
 }
 
 async fn level1_get_variants_ticket(base: &str, client: &HttpClient) -> TestCaseResult {
@@ -474,7 +427,7 @@ async fn level1_get_variants_ticket(base: &str, client: &HttpClient) -> TestCase
     let url = format!(
         "{}/variants/{}",
         base.trim_end_matches('/'),
-        urlencoding_encode_path_segment(&id)
+        percent_encode_path_segment(&id)
     );
     let name = "htsget GET variants ticket (VCF/BCF + DRS stream URL)";
     let resp = match client.inner().get(&url).send().await {
@@ -560,14 +513,7 @@ async fn level1_get_variants_ticket(base: &str, client: &HttpClient) -> TestCase
             ),
         );
     }
-    TestCaseResult {
-        name: name.into(),
-        level: ComplianceLevel::Level1,
-        passed: true,
-        error: None,
-        category: TestCategory::Schema,
-        weight: 1.0,
-    }
+    TestCaseResult::pass(name, ComplianceLevel::Level1, TestCategory::Schema)
 }
 
 /// GET variants with a reads-only object → 404 NotFound.
@@ -576,7 +522,7 @@ async fn level2_variants_endpoint_wrong_kind(base: &str, client: &HttpClient) ->
     let url = format!(
         "{}/variants/{}",
         base.trim_end_matches('/'),
-        urlencoding_encode_path_segment(&id)
+        percent_encode_path_segment(&id)
     );
     let name = "htsget GET variants with reads-only object → NotFound";
     match fetch_json(client, &url).await {
@@ -590,14 +536,7 @@ async fn level2_variants_endpoint_wrong_kind(base: &str, client: &HttpClient) ->
                 );
             }
             if htsget_error_code(&v) == Some("NotFound") {
-                TestCaseResult {
-                    name: name.into(),
-                    level: ComplianceLevel::Level2,
-                    passed: true,
-                    error: None,
-                    category: TestCategory::Robustness,
-                    weight: 1.0,
-                }
+                TestCaseResult::pass(name, ComplianceLevel::Level2, TestCategory::Robustness)
             } else {
                 fail(
                     name,
@@ -627,7 +566,7 @@ async fn level2_post_reads_ticket(base: &str, client: &HttpClient) -> TestCaseRe
     let url = format!(
         "{}/reads/{}",
         base.trim_end_matches('/'),
-        urlencoding_encode_path_segment(&id)
+        percent_encode_path_segment(&id)
     );
     let name = "htsget POST reads ticket (JSON body, no query)";
     let body = serde_json::json!({
@@ -704,14 +643,11 @@ async fn level2_post_reads_ticket(base: &str, client: &HttpClient) -> TestCaseRe
             "POST ticket must include DRS stream URL like GET".to_string(),
         );
     }
-    TestCaseResult {
-        name: name.into(),
-        level: ComplianceLevel::Level2,
-        passed: true,
-        error: None,
-        category: TestCategory::Interoperability,
-        weight: 1.0,
-    }
+    TestCaseResult::pass(
+        name,
+        ComplianceLevel::Level2,
+        TestCategory::Interoperability,
+    )
 }
 
 async fn level2_post_variants_ticket(base: &str, client: &HttpClient) -> TestCaseResult {
@@ -719,7 +655,7 @@ async fn level2_post_variants_ticket(base: &str, client: &HttpClient) -> TestCas
     let url = format!(
         "{}/variants/{}",
         base.trim_end_matches('/'),
-        urlencoding_encode_path_segment(&id)
+        percent_encode_path_segment(&id)
     );
     let name = "htsget POST variants ticket (JSON body, no query)";
     let body = serde_json::json!({
@@ -796,14 +732,11 @@ async fn level2_post_variants_ticket(base: &str, client: &HttpClient) -> TestCas
             "POST variants ticket must include DRS stream URL like GET".to_string(),
         );
     }
-    TestCaseResult {
-        name: name.into(),
-        level: ComplianceLevel::Level2,
-        passed: true,
-        error: None,
-        category: TestCategory::Interoperability,
-        weight: 1.0,
-    }
+    TestCaseResult::pass(
+        name,
+        ComplianceLevel::Level2,
+        TestCategory::Interoperability,
+    )
 }
 
 async fn level2_post_reads_with_query_invalid(base: &str, client: &HttpClient) -> TestCaseResult {
@@ -811,7 +744,7 @@ async fn level2_post_reads_with_query_invalid(base: &str, client: &HttpClient) -
     let url = format!(
         "{}/reads/{}?format=BAM",
         base.trim_end_matches('/'),
-        urlencoding_encode_path_segment(&id)
+        percent_encode_path_segment(&id)
     );
     let name = "htsget POST reads with query params → InvalidInput";
     let body = serde_json::json!({"format": "BAM"});
@@ -825,14 +758,7 @@ async fn level2_post_reads_with_query_invalid(base: &str, client: &HttpClient) -
                     format!("error body OpenAPI: {}", e),
                 );
             }
-            TestCaseResult {
-                name: name.into(),
-                level: ComplianceLevel::Level2,
-                passed: true,
-                error: None,
-                category: TestCategory::Robustness,
-                weight: 1.0,
-            }
+            TestCaseResult::pass(name, ComplianceLevel::Level2, TestCategory::Robustness)
         }
         Ok((status, text, v)) => fail(
             name,
@@ -858,7 +784,7 @@ async fn level2_get_unsupported_format_cram_on_bam(
     let plain_url = format!(
         "{}/reads/{}",
         base.trim_end_matches('/'),
-        urlencoding_encode_path_segment(&id)
+        percent_encode_path_segment(&id)
     );
     if let Ok((st, _, v)) = fetch_json(client, &plain_url).await {
         if st.is_success() {
@@ -887,14 +813,7 @@ async fn level2_get_unsupported_format_cram_on_bam(
                     format!("error body OpenAPI: {}", e),
                 );
             }
-            TestCaseResult {
-                name: name.into(),
-                level: ComplianceLevel::Level2,
-                passed: true,
-                error: None,
-                category: TestCategory::Robustness,
-                weight: 1.0,
-            }
+            TestCaseResult::pass(name, ComplianceLevel::Level2, TestCategory::Robustness)
         }
         Ok((status, text, v)) => fail(
             name,
@@ -917,7 +836,7 @@ async fn level2_get_class_header_invalid(base: &str, client: &HttpClient) -> Tes
     let url = format!(
         "{}/reads/{}?class=header",
         base.trim_end_matches('/'),
-        urlencoding_encode_path_segment(&id)
+        percent_encode_path_segment(&id)
     );
     let name = "htsget GET reads ?class=header → InvalidInput";
     match fetch_json(client, &url).await {
@@ -932,14 +851,7 @@ async fn level2_get_class_header_invalid(base: &str, client: &HttpClient) -> Tes
                     format!("error body OpenAPI: {}", e),
                 );
             }
-            TestCaseResult {
-                name: name.into(),
-                level: ComplianceLevel::Level2,
-                passed: true,
-                error: None,
-                category: TestCategory::Robustness,
-                weight: 1.0,
-            }
+            TestCaseResult::pass(name, ComplianceLevel::Level2, TestCategory::Robustness)
         }
         Ok((status, text, v)) => fail(
             name,
@@ -973,7 +885,7 @@ async fn level4_htsget_dataset_auth(base: &str, client: &HttpClient) -> TestCase
     let url = format!(
         "{}/reads/{}",
         base.trim_end_matches('/'),
-        urlencoding_encode_path_segment(obj.trim())
+        percent_encode_path_segment(obj.trim())
     );
     let no_auth = match fetch_json(client, &url).await {
         Ok(x) => x,
@@ -1006,17 +918,12 @@ async fn level4_htsget_dataset_auth(base: &str, client: &HttpClient) -> TestCase
     let token = match std::env::var("HELIXTEST_HTSGET_DATASET_BEARER") {
         Ok(s) if !s.trim().is_empty() => s,
         _ => {
-            return TestCaseResult {
-                name: name.into(),
-                level: ComplianceLevel::Level4,
-                passed: true,
-                error: Some(
-                    "partial: 403 without token OK — set HELIXTEST_HTSGET_DATASET_BEARER (GA4GH Passport or token with ControlledAccessGrants visa) to assert 200 ticket"
-                        .into(),
-                ),
-                category: TestCategory::Security,
-                weight: 1.0,
-            };
+            return skip(
+                name,
+                ComplianceLevel::Level4,
+                TestCategory::Security,
+                "403 without token OK — set HELIXTEST_HTSGET_DATASET_BEARER to assert 200 ticket",
+            );
         }
     };
     let resp = match client
@@ -1087,14 +994,7 @@ async fn level4_htsget_dataset_auth(base: &str, client: &HttpClient) -> TestCase
             "authenticated ticket must include DRS stream URL".to_string(),
         );
     }
-    TestCaseResult {
-        name: name.into(),
-        level: ComplianceLevel::Level4,
-        passed: true,
-        error: None,
-        category: TestCategory::Security,
-        weight: 1.0,
-    }
+    TestCaseResult::pass(name, ComplianceLevel::Level4, TestCategory::Security)
 }
 
 pub async fn run_htsget_checks(

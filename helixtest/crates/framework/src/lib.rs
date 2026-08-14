@@ -11,17 +11,37 @@ pub mod tes;
 pub mod trs;
 pub mod wes;
 
+use anyhow::Context;
 use common::config::TestConfig;
 use common::http::HttpClient;
 use common::report::{
     ComplianceLevel, OverallReport, ServiceKind, ServiceReport, SkippedService, TestCaseResult,
     TestCategory,
 };
+use common::util::{level0_reachable_ok, profiles_dir};
+
+pub(crate) fn level0_http(
+    name: &str,
+    res: Result<reqwest::Response, reqwest::Error>,
+) -> TestCaseResult {
+    match res {
+        Ok(resp) if level0_reachable_ok(resp.status()) => {
+            TestCaseResult::pass(name, ComplianceLevel::Level0, TestCategory::Other)
+        }
+        Ok(resp) => TestCaseResult::fail(
+            name,
+            ComplianceLevel::Level0,
+            TestCategory::Other,
+            format!("Unexpected HTTP status: {}", resp.status()),
+        ),
+        Err(e) => TestCaseResult::fail(name, ComplianceLevel::Level0, TestCategory::Other, e),
+    }
+}
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
-use tracing::info;
+use tracing::{info, warn};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Mode {
@@ -37,7 +57,11 @@ impl Mode {
             "ferrum" | "Ferrum" => Mode::Ferrum,
             "ferrum-africa" | "FerrumAfrica" => Mode::FerrumAfrica,
             "ferrum+infra" | "ferrum-infra" | "FerrumInfra" => Mode::FerrumInfra,
-            _ => Mode::Generic,
+            "generic" | "Generic" | "" => Mode::Generic,
+            other => {
+                warn!(mode = other, "unknown mode; using generic");
+                Mode::Generic
+            }
         }
     }
 }
@@ -52,52 +76,41 @@ pub struct Features {
     pub strict_drs_checksums: bool,
 }
 
-fn load_features(mode: Mode) -> Features {
-    // First, honor HELIXTEST_PROFILE if set (generic, ferrum, strict, etc.).
-    if let Ok(profile) = std::env::var("HELIXTEST_PROFILE") {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("profiles")
-            .join(format!("{}.toml", profile));
-        if path.exists() {
-            if let Ok(data) = fs::read_to_string(&path) {
-                if let Ok(v) = toml::from_str::<toml::Value>(&data) {
-                    if let Some(feat) = v.get("features") {
-                        if let Ok(parsed) = feat.clone().try_into::<Features>() {
-                            return parsed;
-                        }
-                    }
-                }
-            }
+fn parse_features_file(path: &Path) -> anyhow::Result<Features> {
+    let data = fs::read_to_string(path)
+        .with_context(|| format!("Failed to read features from {}", path.display()))?;
+    let v: toml::Value = toml::from_str(&data)
+        .with_context(|| format!("Failed to parse TOML {}", path.display()))?;
+    match v.get("features") {
+        Some(feat) => feat
+            .clone()
+            .try_into::<Features>()
+            .with_context(|| format!("Failed to parse [features] in {}", path.display())),
+        None => {
+            warn!(path = %path.display(), "profile has no [features]; using defaults");
+            Ok(Features::default())
         }
     }
+}
 
-    // Backwards-compatible default: Ferrum-specific profile when in Ferrum mode.
+fn load_features(mode: Mode, profile: Option<&str>) -> anyhow::Result<Features> {
+    if let Some(profile) = profile.filter(|s| !s.is_empty()) {
+        let path = profiles_dir()?.join(format!("{}.toml", profile));
+        if !path.exists() {
+            anyhow::bail!("HELIXTEST profile not found: {}", path.display());
+        }
+        return parse_features_file(&path);
+    }
+
     if let Mode::Ferrum = mode {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("profiles")
-            .join("ferrum.toml");
+        let path = profiles_dir()?.join("ferrum.toml");
         if path.exists() {
-            if let Ok(data) = fs::read_to_string(&path) {
-                if let Ok(v) = toml::from_str::<toml::Value>(&data) {
-                    if let Some(feat) = v.get("features") {
-                        if let Ok(parsed) = feat.clone().try_into::<Features>() {
-                            return parsed;
-                        }
-                    }
-                }
-            }
+            return parse_features_file(&path);
         }
+        warn!("Ferrum mode but profiles/ferrum.toml missing; using default features");
     }
 
-    Features::default()
+    Ok(Features::default())
 }
 
 fn parse_service_name(name: &str) -> Option<ServiceKind> {
@@ -152,9 +165,10 @@ fn enabled_services_from_config(cfg: &TestConfig) -> HashSet<ServiceKind> {
 pub async fn run_all(
     mode: Mode,
     only: Option<HashSet<ServiceKind>>,
+    profile: Option<String>,
 ) -> anyhow::Result<OverallReport> {
-    // Auto-detect Ferrum by inspecting WES /service-info if in generic mode.
-    let cfg = TestConfig::from_env_or_file()?;
+    let profile_ref = profile.as_deref();
+    let cfg = TestConfig::load(profile_ref)?;
     let client = HttpClient::new();
     let effective_mode = if let Mode::Generic = mode {
         let url = format!(
@@ -182,7 +196,7 @@ pub async fn run_all(
         mode
     };
 
-    let features = load_features(effective_mode);
+    let features = load_features(effective_mode, profile_ref)?;
 
     let mut enabled = enabled_services_from_config(&cfg);
     if let Some(only_set) = only {
@@ -230,16 +244,12 @@ pub async fn run_all(
                 if matches!(effective_mode, Mode::Ferrum) && skip_auth {
                     ServiceReport {
                         service: ServiceKind::Auth,
-                        tests: vec![TestCaseResult {
-                            name: "Auth suite skipped (HELIXTEST_SKIP_AUTH=true)".to_string(),
-                            level: ComplianceLevel::Level1,
-                            passed: true,
-                            error: Some(
-                                "skipped: HELIXTEST_SKIP_AUTH=true in Ferrum mode".to_string(),
-                            ),
-                            category: TestCategory::Security,
-                            weight: 1.0,
-                        }],
+                        tests: vec![TestCaseResult::skip(
+                            "Auth suite skipped (HELIXTEST_SKIP_AUTH=true)",
+                            ComplianceLevel::Level4,
+                            TestCategory::Security,
+                            "HELIXTEST_SKIP_AUTH=true in Ferrum mode",
+                        )],
                     }
                 } else {
                     auth::run_auth_checks(effective_mode, &features, &cfg, &client).await?
@@ -251,46 +261,15 @@ pub async fn run_all(
             ServiceKind::E2e => {
                 e2e::run_e2e_checks(effective_mode, &features, &cfg, &client).await?
             }
-            ServiceKind::Africa => ServiceReport {
-                service: ServiceKind::Africa,
-                tests: vec![TestCaseResult {
-                    name: "Africa suite skipped (use --mode ferrum-africa)".into(),
-                    level: ComplianceLevel::Level1,
-                    passed: true,
-                    error: Some("skipped: use --mode ferrum-africa".into()),
-                    category: TestCategory::Other,
-                    weight: 0.0,
-                }],
-            },
-            ServiceKind::Infra => ServiceReport {
-                service: ServiceKind::Infra,
-                tests: vec![TestCaseResult {
-                    name: "Infra suite skipped (use --mode ferrum+infra)".into(),
-                    level: ComplianceLevel::Level1,
-                    passed: true,
-                    error: Some("skipped: use --mode ferrum+infra".into()),
-                    category: TestCategory::Other,
-                    weight: 0.0,
-                }],
-            },
+            ServiceKind::Africa | ServiceKind::Infra => {
+                unreachable!("Africa/Infra are not in all_services(); use --mode")
+            }
         };
         executed_test_modules.push(service);
         services.push(report);
     }
     let mut enabled_services: Vec<ServiceKind> = enabled.into_iter().collect();
-    enabled_services.sort_by_key(|s| match s {
-        ServiceKind::Wes => 0,
-        ServiceKind::Tes => 1,
-        ServiceKind::Drs => 2,
-        ServiceKind::Trs => 3,
-        ServiceKind::Beacon => 4,
-        ServiceKind::Htsget => 5,
-        ServiceKind::Auth => 6,
-        ServiceKind::Crypt4gh => 7,
-        ServiceKind::E2e => 8,
-        ServiceKind::Africa => 9,
-        ServiceKind::Infra => 10,
-    });
+    enabled_services.sort_by_key(|s| s.canonical_order());
     Ok(OverallReport {
         services,
         enabled_services,

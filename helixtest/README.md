@@ -14,7 +14,7 @@ HelixTest currently targets:
 - **TRS** – Tool Registry Service
 - **Beacon v2**
 - **htsget 1.3.0** (GA4GH tickets + DRS stream links; Ferrum [`ferrum-htsget`](https://github.com/SynapticFour/Ferrum) on `/ga4gh/htsget/v1`)
-- **GA4GH Passports / AAI / OIDC**
+- **HMAC JWT fixture** (default Auth) and **GA4GH Passports / AAI / OIDC** (`--mode ferrum+infra`)
 - **Crypt4GH-style encryption** (local `age`-based checks; optional Ferrum DRS **rewrap** / **decrypt_plain** via the GA4GH `crypt4gh` crate)
 
 For Ferrum-specific guidance, see the dedicated document: [docs/ferrum.md](docs/ferrum.md). **CI vs full stack:** HelixTest against Ferrum in CI usually assumes **noop TES**; Docker TES and DB init semantics are documented in [docs/adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md](docs/adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md).
@@ -29,7 +29,7 @@ HelixTest is organized as a **CLI** that runs a **framework** of per-service che
   User: helixtest --all [--report table|json|scores|coverage]
                     │
                     ▼
-  CLI ──────────► Framework (WES, DRS, TRS, TES, Beacon, htsget, Auth, Crypt4GH, E2E)
+  CLI ──────────► Framework (WES, TES, DRS, TRS, Beacon, htsget, Auth, Crypt4GH, E2E)
                     │
                     ▼
   Common (config, http, workflow, report, auth, crypto, logging, schemas)
@@ -49,7 +49,7 @@ See **[docs/architecture.md](docs/architecture.md)** for a full architecture dia
 - `crates/api-tests` – per-API contract tests (WES, TES, DRS, TRS, Beacon).
 - `crates/workflow-tests` – workflow-level WES tests (CWL/WDL/Nextflow, scatter/gather).
 - `crates/e2e-tests` – full TRS → DRS → WES → TES → Beacon pipelines.
-- `crates/auth-tests` – GA4GH Passports / OIDC security tests.
+- `crates/auth-tests` – HMAC JWT fixture / token-protected endpoint tests (Passports are `--mode ferrum+infra`).
 - `crates/crypt4gh-tests` – encryption/decryption, corruption, wrong-key, streaming tests.
 - `crates/cli` – HelixTest CLI (`helixtest` binary).
 - `test-data/` – workflows, inputs, deterministic outputs, and `.sha256` checksums.
@@ -77,7 +77,7 @@ Each test case is tagged with a `ComplianceLevel` and contributes to per-service
 
 Use `--report scores` for a JSON summary of levels and scores, and `--fail-level N` to exit with code 1 if overall level is below N.
 
-For full details (levels, scores, coverage matrix), see **[docs/scoring.md](docs/scoring.md)**.
+For full details (levels, scores, coverage matrix), see **[docs/scoring.md](docs/scoring.md)**. Remaining gaps (HMAC vs Passports, age vs Crypt4GH, two test runners) are listed in **[docs/known-limitations.md](docs/known-limitations.md)**.
 
 ---
 
@@ -151,13 +151,13 @@ HelixTest is **usable by any GA4GH-compliant platform** with no code changes; co
 
 ### Running the Suite
 
-From the repository root (or the `helixtest` directory):
+From the **repository root** (`HelixTest/`; single Cargo workspace):
 
 ```bash
 cargo run --bin helixtest -- --all
 ```
 
-**Options:** `--report table|json|scores|coverage` (default: table), `--mode generic|ferrum`, `--profile <name>`, `--start-ferrum`, `--fail-level <N>`, `--only <service>` (repeatable: `wes`, `tes`, `drs`, `trs`, `beacon`, `htsget`, `auth`, `crypt4gh`, `e2e`), `--verbose`.
+**Options:** `--report table|json|scores|coverage` (default: table), `--mode generic|ferrum|ferrum-africa|ferrum+infra`, `--profile <name>`, `--start-ferrum` (polls WES `/service-info`; optional `--compose-file`, else `helixtest/docker/docker-compose.yml` if present), `--fail-level <N>`, `--only <service>` (repeatable: `wes`, `tes`, `drs`, `trs`, `beacon`, `htsget`, `auth`, `crypt4gh`, `e2e`), `--verbose`.
 
 **Optional JSON diagnostics (not scored):** `HELIXTEST_REPORT_DIAGNOSTICS=true` or `1` adds fields such as `suite_duration_ms` to the full JSON report (`--report json`); compliance levels and scores are unchanged.
 
@@ -242,27 +242,29 @@ New tests are added in the framework (`crates/framework`) and tagged with a comp
   - Negative variant must have `response.exists == false`.
   - Can be feature-gated via `supports_beacon_v2` (see `profiles/ferrum.toml`).
 
-- **Auth / GA4GH Passports**
-  - Valid token + scope → success.
+- **Auth (HMAC JWT fixture, not Passports)**
+  - Level 0 probes `auth_url` `/service-info`.
+  - Valid HMAC token + scope → success against DRS (shared secret / `HELIXTEST_SHARED_SECRET`).
   - Missing token → `401`.
   - Expired token → `401`.
-  - Invalid signature → `401`.
   - Wrong scope → `403`.
+  - **GA4GH Passports / OIDC** live in `--mode ferrum+infra` (`infra.rs`), not this HMAC suite.
 
-- **Crypt4GH-style encryption**
+- **Local age encryption** (crate still named Crypt4GH; not Crypt4GH containers)
   - Round-trip checksum equality.
   - Partial decrypt (prefix bytes).
   - Corrupted header / ciphertext must fail to decrypt.
   - Wrong key must fail.
   - Streaming-compatible reads preserve checksum.
+  - Optional Ferrum **Crypt4GH** HTTP rewrap/decrypt_plain is separate and env-gated.
 
 - **E2E Interoperability**
-  - TRS → DRS → WES → TES → DRS → Beacon pipeline:
+  - TRS → DRS → WES → DRS → Beacon pipeline:
     - Tool/version discovery in TRS.
     - DRS inputs/outputs with ID propagation.
     - WES run execution with correct lifecycle and outputs.
-    - TES tasks linked to WES run IDs.
-    - Output object downloaded from DRS via `access_url` and validated via checksum.
+    - TES is probed for reachability only (task id is **not** required to equal WES `run_id`).
+    - Output object downloaded from DRS via `access_url` and validated via checksum (golden file required).
     - Beacon reports presence of a known variant after pipeline execution.
 
 ---
@@ -272,7 +274,7 @@ New tests are added in the framework (`crates/framework`) and tagged with a comp
 HelixTest has first-class support for testing **Ferrum**, a Rust-based GA4GH platform:
 
 - Mode selection: `--mode ferrum`.
-- Optional auto-start via Docker: `--start-ferrum`.
+- Optional auto-start via Docker: `--start-ferrum` (compose file `helixtest/docker/docker-compose.yml` or `--compose-file`; waits for WES `/service-info`).
 - Feature flags via `profiles/ferrum.toml` to:
   - Enable/disable scatter/gather workflow checks.
   - Enable/disable Beacon v2 tests.
@@ -313,18 +315,19 @@ This workspace provides **HelixTest**, a GA4GH conformance and integration test 
 - **DRS** (Data Repository Service)
 - **TRS** (Tool Registry Service)
 - **Beacon v2**
-- **GA4GH Passports / AAI / OIDC**
-- **Crypt4GH-style** encryption (pluggable, `age`-based reference implementation)
+- **GA4GH Passports / AAI / OIDC** (`--mode ferrum+infra`; default Auth is HMAC JWT)
+- **Crypt4GH-style** encryption (local `age` checks; optional Ferrum HTTP Crypt4GH)
 
 ### Workspace Layout
 
-- `crates/common` – shared config, HTTP client, polling, logging, domain types
-- `crates/api-tests` – per-API contract tests with JSON-schema-style validation
+- `crates/common` (`helixtest-common`) – shared config, HTTP client, polling, logging, domain types
+- `crates/framework` (`helixtest-framework`) – conformance suite used by the CLI
+- `crates/api-tests` – per-API contract tests (official GA4GH schemas)
 - `crates/workflow-tests` – workflow-level WES tests (CWL/WDL/Nextflow)
 - `crates/e2e-tests` – full cross-service integration tests
-- `crates/auth-tests` – GA4GH Passports / OIDC tests
-- `crates/crypt4gh-tests` – encryption / decryption and integrity tests
-- `crates/cli` – **HelixTest** CLI (`helixtest` binary) for orchestrating the above
+- `crates/auth-tests` – HMAC JWT / token-protected endpoint tests
+- `crates/crypt4gh-tests` – local **age** encrypt/decrypt integrity tests
+- `crates/cli` – **HelixTest** CLI (`helixtest` binary)
 - `test-data/` – workflows, inputs, and expected outputs
 - `docker/` – `docker-compose.yml` with mock GA4GH services
 
@@ -377,6 +380,5 @@ HelixTest is provided **as is**, without warranty of any kind, express or implie
 
 ---
 
-© 2025 Synaptic Four · Licensed under [Apache-2.0](../LICENSE).  
+© 2025 Synaptic Four · Licensed under [Apache-2.0](../LICENSE).
 Contact: [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com)
-

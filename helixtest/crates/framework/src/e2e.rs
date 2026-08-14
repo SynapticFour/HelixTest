@@ -1,38 +1,24 @@
 //! Cross-service interoperability checks (Level 3): TRS → DRS → WES → DRS output → Beacon.
 //!
-//! **Scope:** This module drives WES to **terminal `COMPLETE`** via `common::workflow::poll_wes_run_until_terminal`
-//! (non-terminal WES states are allowed until then). It does **not** poll TES: coupling WES run id
-//! to TES task id is deployment-specific. Full TRS→…→TES coupling lives in the `e2e-tests` crate
-//! where the mock stack defines that contract. **No wall-time or throughput assertions**—only
-//! GA4GH-shaped responses and checksum correctness where applicable.
+//! **Scope:** This module drives WES to **terminal `COMPLETE`** via `common::workflow::poll_wes_run_until_terminal`.
+//! It does **not** poll TES. Full TRS→…→TES coupling lives in the `e2e-tests` crate only when
+//! the mock stack defines that contract.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use common::config::TestConfig;
 use common::http::HttpClient;
 use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCaseResult, TestCategory};
+use common::util::{sha256_bytes, test_data_dir};
 use common::workflow::{
     fetch_wes_run_output, poll_wes_run_until_terminal, submit_wes_run, WesRunRequest,
 };
 use serde_json::Value;
-use sha2::Digest;
-use std::path::PathBuf;
 use std::time::Duration;
 use url::Url;
 
 use crate::{Features, Mode};
 
-fn test_data_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("test-data")
-}
-
 fn preferred_drs_input_uri(drs_obj: &Value, drs_id: &str) -> String {
-    // E2E policy: use DRS URI by default. If DRS exposes self_uri, accept it only
-    // when it is already a drs:// URI.
     if let Some(self_uri) = drs_obj.get("self_uri").and_then(|v| v.as_str()) {
         if self_uri.starts_with("drs://") {
             return self_uri.to_string();
@@ -60,16 +46,12 @@ async fn e2e_trs_drs_wes_tes_drs_beacon_pipeline(
     client: &HttpClient,
 ) -> TestCaseResult {
     let result = run_e2e_pipeline(cfg, client).await;
-    TestCaseResult {
-        name:
-            "E2E TRS→DRS→WES→DRS output→Beacon (WES polled to terminal; no TES poll in this module)"
-                .into(),
-        level: ComplianceLevel::Level3,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Interoperability,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "E2E TRS→DRS→WES→DRS output→Beacon (WES polled to terminal; no TES poll in this module)",
+        ComplianceLevel::Level3,
+        TestCategory::Interoperability,
+        result,
+    )
 }
 
 async fn run_e2e_pipeline(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
@@ -184,19 +166,21 @@ async fn run_e2e_pipeline(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
         anyhow::bail!("Failed to download DRS output: {}", resp.status());
     }
     let bytes = resp.bytes().await?;
-    let mut hasher = sha2::Sha256::new();
-    hasher.update(&bytes);
-    let actual_checksum = format!("{:x}", hasher.finalize());
+    let actual_checksum = sha256_bytes(&bytes);
 
-    let expected_path = test_data_dir()
+    let expected_path = test_data_dir()?
         .join("expected")
         .join("e2e")
         .join("result.txt.sha256");
-    let expected_checksum = if expected_path.exists() {
-        std::fs::read_to_string(&expected_path)?.trim().to_owned()
-    } else {
-        actual_checksum.clone()
-    };
+    let expected_checksum = std::fs::read_to_string(&expected_path)
+        .with_context(|| {
+            format!(
+                "E2E golden checksum missing at {} — add the expected SHA-256; refusing to treat actual as expected",
+                expected_path.display()
+            )
+        })?
+        .trim()
+        .to_owned();
     if !actual_checksum.eq_ignore_ascii_case(&expected_checksum) {
         anyhow::bail!(
             "E2E result checksum mismatch: expected {}, got {}",
@@ -206,7 +190,7 @@ async fn run_e2e_pipeline(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
     }
 
     let beacon_url = format!("{}/query", cfg.services.beacon_url.trim_end_matches('/'));
-    let _beacon_resp = client
+    let beacon_resp = client
         .post_json(
             &beacon_url,
             &serde_json::json!({
@@ -222,6 +206,12 @@ async fn run_e2e_pipeline(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
             }),
         )
         .await?;
+    let exists = beacon_resp
+        .pointer("/response/exists")
+        .and_then(|v| v.as_bool());
+    if exists == Some(false) {
+        anyhow::bail!("Beacon reported exists=false after E2E pipeline");
+    }
 
     Ok(())
 }

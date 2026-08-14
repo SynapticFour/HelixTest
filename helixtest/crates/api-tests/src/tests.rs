@@ -1,16 +1,10 @@
 use anyhow::Result;
 use common::config::TestConfig;
+use common::ga4gh_schemas::{
+    validate_trs_tool, validate_trs_tool_version, validate_wes_service_info,
+};
 use common::http::HttpClient;
-use common::schemas::{assert_required_string_field, validate_json_against};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-struct WesServiceInfo {
-    pub id: String,
-    pub name: String,
-    pub supported_wes_versions: Vec<String>,
-}
+use common::schemas::assert_required_string_field;
 
 #[tokio::test]
 async fn wes_service_info_schema_and_fields() -> Result<()> {
@@ -22,10 +16,8 @@ async fn wes_service_info_schema_and_fields() -> Result<()> {
     );
     let v = client.get_json(&url).await?;
 
-    // Strict schema validation
-    validate_json_against::<WesServiceInfo>(&v)?;
+    validate_wes_service_info(&v)?;
 
-    // Validate enums / versions contain at least one known GA4GH version
     let versions = v
         .get("supported_wes_versions")
         .and_then(|x| x.as_array())
@@ -63,7 +55,6 @@ async fn drs_get_object_required_fields() -> Result<()> {
     let _self_uri = assert_required_string_field(&v, "self_uri")?;
     let _name = assert_required_string_field(&v, "name")?;
 
-    // Validate access methods present and correctly typed
     let access_methods = v
         .get("access_methods")
         .and_then(|x| x.as_array())
@@ -78,18 +69,6 @@ async fn drs_get_object_required_fields() -> Result<()> {
 
 #[tokio::test]
 async fn trs_tools_and_versions_contract() -> Result<()> {
-    #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-    struct ToolVersion {
-        pub id: String,
-        pub name: Option<String>,
-    }
-
-    #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-    struct Tool {
-        pub id: String,
-        pub name: String,
-    }
-
     let cfg = TestConfig::from_env_or_file()?;
     let client = HttpClient::new();
     let tools_url = format!("{}/tools", cfg.services.trs_url.trim_end_matches('/'));
@@ -102,9 +81,8 @@ async fn trs_tools_and_versions_contract() -> Result<()> {
         "TRS must expose at least one tool for testing"
     );
 
-    // Validate schema for first tool and its versions
     let first_tool = &tools[0];
-    validate_json_against::<Tool>(first_tool)?;
+    validate_trs_tool(first_tool)?;
     let tool_id = assert_required_string_field(first_tool, "id")?;
 
     let versions_url = format!(
@@ -120,7 +98,7 @@ async fn trs_tools_and_versions_contract() -> Result<()> {
         !versions.is_empty(),
         "TRS tool must expose at least one version"
     );
-    validate_json_against::<ToolVersion>(&versions[0])?;
+    validate_trs_tool_version(&versions[0])?;
 
     Ok(())
 }

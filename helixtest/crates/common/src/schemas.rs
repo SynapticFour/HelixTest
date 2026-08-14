@@ -3,17 +3,33 @@ use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+
+static COMPILED: OnceLock<Mutex<HashMap<&'static str, &'static JSONSchema>>> = OnceLock::new();
 
 pub fn validate_json_against<T>(value: &Value) -> anyhow::Result<()>
 where
     T: JsonSchema + for<'de> DeserializeOwned + Serialize,
 {
-    let schema = schemars::schema_for!(T);
-    let schema_value = serde_json::to_value(&schema.schema)?;
-    let schema_static: &'static serde_json::Value = Box::leak(Box::new(schema_value));
-    let compiled = JSONSchema::options()
-        .with_draft(Draft::Draft7)
-        .compile(schema_static)?;
+    let key = std::any::type_name::<T>();
+    let map = COMPILED.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut guard = map
+        .lock()
+        .map_err(|_| anyhow::anyhow!("JSON schema cache lock poisoned"))?;
+    let compiled = if let Some(c) = guard.get(key) {
+        *c
+    } else {
+        let schema = schemars::schema_for!(T);
+        let schema_value = serde_json::to_value(&schema.schema)?;
+        let schema_static: &'static Value = Box::leak(Box::new(schema_value));
+        let compiled = JSONSchema::options()
+            .with_draft(Draft::Draft7)
+            .compile(schema_static)?;
+        let compiled_static: &'static JSONSchema = Box::leak(Box::new(compiled));
+        guard.insert(key, compiled_static);
+        compiled_static
+    };
 
     let result = compiled.validate(value);
     if let Err(errors) = result {

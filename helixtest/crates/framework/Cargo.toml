@@ -1,7 +1,13 @@
 [package]
-name = "framework"
+name = "helixtest-framework"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+name = "framework"
 
 [dependencies]
 anyhow = { workspace = true }
@@ -14,9 +20,7 @@ tempfile = { workspace = true }
 tokio = { workspace = true }
 toml = { workspace = true }
 tracing = { workspace = true }
-common = { path = "../common" }
+common = { path = "../common", package = "helixtest-common" }
 url = { workspace = true }
-sha2 = { workspace = true }
 crypt4gh = { workspace = true }
 base64 = { workspace = true }
-

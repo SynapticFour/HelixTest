@@ -1,4 +1,4 @@
-# Keep aligned with .github/workflows/ci.yml
+# Keep aligned with .github/workflows/conformance.yml
 repos:
   - repo: local
     hooks:

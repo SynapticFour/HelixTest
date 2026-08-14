@@ -24,7 +24,7 @@ fn encrypt_decrypt_roundtrip_checksum_matches() -> Result<()> {
     let dec = NamedTempFile::new()?;
     let dec_path = dec.path().to_path_buf();
 
-    let pass = "crypt4gh-test-pass";
+    let pass = "age-test-pass";
     let _enc_checksum = encrypt_file(&input_path, &enc_path, pass)?;
     let dec_checksum = decrypt_file(&enc_path, &dec_path, pass)?;
     assert_eq!(
@@ -41,7 +41,7 @@ fn partial_read_returns_prefix_bytes() -> Result<()> {
 
     let enc = NamedTempFile::new()?;
     let enc_path = enc.path().to_path_buf();
-    let pass = "crypt4gh-test-pass";
+    let pass = "age-test-pass";
     let _enc_checksum = encrypt_file(&input_path, &enc_path, pass)?;
 
     let partial = decrypt_partial(&enc_path, pass, 16)?;
@@ -58,7 +58,7 @@ fn corrupted_ciphertext_fails_to_decrypt() -> Result<()> {
     let enc_path = enc.path().to_path_buf();
     let dec = NamedTempFile::new()?;
     let dec_path = dec.path().to_path_buf();
-    let pass = "crypt4gh-test-pass";
+    let pass = "age-test-pass";
     let _enc_checksum = encrypt_file(&input_path, &enc_path, pass)?;
 
     corrupt_file(&enc_path)?;
@@ -80,8 +80,8 @@ fn wrong_key_decryption_fails() -> Result<()> {
     let dec = NamedTempFile::new()?;
     let dec_path = dec.path().to_path_buf();
 
-    let pass_ok = "crypt4gh-test-pass";
-    let pass_wrong = "crypt4gh-wrong-pass";
+    let pass_ok = "age-test-pass";
+    let pass_wrong = "age-wrong-pass";
 
     let _enc_checksum = encrypt_file(&input_path, &enc_path, pass_ok)?;
     let res = decrypt_file(&enc_path, &dec_path, pass_wrong);
@@ -101,7 +101,7 @@ fn corrupted_header_fails_to_decrypt() -> Result<()> {
     let enc_path = enc.path().to_path_buf();
     let dec = NamedTempFile::new()?;
     let dec_path = dec.path().to_path_buf();
-    let pass = "crypt4gh-test-pass";
+    let pass = "age-test-pass";
     let _enc_checksum = encrypt_file(&input_path, &enc_path, pass)?;
 
     // Corrupt only the beginning of the file (header region)
@@ -136,7 +136,7 @@ fn streaming_decryption_compatible() -> Result<()> {
     let tmp_dec = NamedTempFile::new()?;
     let tmp_dec_path = tmp_dec.path().to_path_buf();
 
-    let pass = "crypt4gh-test-pass";
+    let pass = "age-test-pass";
     let _enc_checksum = encrypt_file(&input_path, &enc_path, pass)?;
 
     // Use decrypt_file to produce a decrypted file, then read it in a streaming fashion

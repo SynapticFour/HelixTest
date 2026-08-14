@@ -5,10 +5,10 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use common::config::TestConfig;
 use common::http::HttpClient;
 use common::report::{ComplianceLevel, TestCaseResult, TestCategory};
+use common::util::{percent_encode_path_segment, sha256_bytes};
 use crypt4gh::keys;
 use crypt4gh::Keys;
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 use std::io::Cursor;
 use std::path::Path;
 use tracing::info;
@@ -28,14 +28,7 @@ fn skip(
 ) -> TestCaseResult {
     let msg = msg.into();
     info!(test = name, reason = %msg, "Crypt4GH Ferrum HTTP check skipped");
-    TestCaseResult {
-        name: name.to_string(),
-        level,
-        passed: true,
-        error: Some(msg),
-        category,
-        weight: 1.0,
-    }
+    TestCaseResult::skip(name, level, category, msg)
 }
 
 fn fail(
@@ -44,14 +37,7 @@ fn fail(
     category: TestCategory,
     msg: impl Into<String>,
 ) -> TestCaseResult {
-    TestCaseResult {
-        name: name.to_string(),
-        level,
-        passed: false,
-        error: Some(msg.into()),
-        category,
-        weight: 1.0,
-    }
+    TestCaseResult::fail(name, level, category, msg.into())
 }
 
 fn drs_object_url(cfg: &TestConfig, object_id: &str) -> String {
@@ -63,16 +49,7 @@ fn drs_object_url(cfg: &TestConfig, object_id: &str) -> String {
 }
 
 fn url_encode_object_id(id: &str) -> String {
-    let mut out = String::with_capacity(id.len());
-    for b in id.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(b as char)
-            }
-            _ => out.push_str(&format!("%{:02X}", b)),
-        }
-    }
-    out
+    percent_encode_path_segment(id)
 }
 
 fn encrypted_object_id() -> String {
@@ -144,12 +121,6 @@ fn drs_sha256_plaintext_checksum(drs_object: &Value) -> Option<String> {
         }
     }
     None
-}
-
-fn sha256_bytes(data: &[u8]) -> String {
-    let mut h = Sha256::new();
-    h.update(data);
-    format!("{:x}", h.finalize())
 }
 
 fn load_client_private_key() -> Result<Vec<u8>> {
@@ -301,7 +272,7 @@ pub async fn ferrum_crypt4gh_drs_rewrap(cfg: &TestConfig, client: &HttpClient) -
     }
 
     let ciphertext = match resp.bytes().await {
-        Ok(b) => b.to_vec(),
+        Ok(b) => b,
         Err(e) => {
             return fail(
                 NAME,
@@ -342,16 +313,14 @@ pub async fn ferrum_crypt4gh_drs_rewrap(cfg: &TestConfig, client: &HttpClient) -
         }
     }
 
-    TestCaseResult {
-        name: NAME.into(),
-        level: ComplianceLevel::Level3,
-        passed: true,
-        error: drs_sha256_plaintext_checksum(&drs_json)
-            .is_none()
-            .then(|| "note: DRS object had no sha256 checksum to verify against".into()),
-        category: TestCategory::Interoperability,
-        weight: 1.0,
+    if drs_sha256_plaintext_checksum(&drs_json).is_none() {
+        info!("DRS object had no sha256 checksum to verify against");
     }
+    TestCaseResult::pass(
+        NAME,
+        ComplianceLevel::Level3,
+        TestCategory::Interoperability,
+    )
 }
 
 /// Plain HTTP download vs rewrap-decrypt SHA256 (decrypt_plain mode on Ferrum).
@@ -469,7 +438,7 @@ pub async fn ferrum_crypt4gh_plain_matches_rewrap(
         );
     }
     let rewrap_ct = match rewrap_resp.bytes().await {
-        Ok(b) => b.to_vec(),
+        Ok(b) => b,
         Err(e) => {
             return fail(
                 NAME,
@@ -519,7 +488,7 @@ pub async fn ferrum_crypt4gh_plain_matches_rewrap(
         );
     }
     let plain_bytes = match plain_resp.bytes().await {
-        Ok(b) => b.to_vec(),
+        Ok(b) => b,
         Err(e) => {
             return fail(
                 NAME,
@@ -543,12 +512,5 @@ pub async fn ferrum_crypt4gh_plain_matches_rewrap(
         );
     }
 
-    TestCaseResult {
-        name: NAME.into(),
-        level: ComplianceLevel::Level3,
-        passed: true,
-        error: None,
-        category: TestCategory::Checksum,
-        weight: 1.0,
-    }
+    TestCaseResult::pass(NAME, ComplianceLevel::Level3, TestCategory::Checksum)
 }

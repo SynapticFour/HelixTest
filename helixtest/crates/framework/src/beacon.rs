@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
 
-use crate::{Features, Mode};
+use crate::{level0_http, Features, Mode};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct BeaconMeta {
@@ -60,25 +60,7 @@ async fn level0_reachable(cfg: &TestConfig, client: &HttpClient) -> TestCaseResu
         }))
         .send()
         .await;
-    match res {
-        Ok(resp) => TestCaseResult {
-            name: "Beacon /query reachable".into(),
-            level: ComplianceLevel::Level0,
-            passed: resp.status().is_success() || resp.status().is_client_error(),
-            error: (!resp.status().is_success() && !resp.status().is_client_error())
-                .then(|| format!("Unexpected HTTP status: {}", resp.status())),
-            category: TestCategory::Other,
-            weight: 1.0,
-        },
-        Err(e) => TestCaseResult {
-            name: "Beacon /query reachable".into(),
-            level: ComplianceLevel::Level0,
-            passed: false,
-            error: Some(e.to_string()),
-            category: TestCategory::Other,
-            weight: 1.0,
-        },
-    }
+    level0_http("Beacon /query reachable", res)
 }
 
 async fn level1_schema(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -99,14 +81,12 @@ async fn level1_schema(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult 
     }
     .await;
 
-    TestCaseResult {
-        name: "Beacon response schema".into(),
-        level: ComplianceLevel::Level1,
-        passed: res.is_ok(),
-        error: res.err().map(|e| e.to_string()),
-        category: TestCategory::Schema,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Beacon response schema",
+        ComplianceLevel::Level1,
+        TestCategory::Schema,
+        res,
+    )
 }
 
 async fn level2_known_variant_exists(
@@ -115,14 +95,12 @@ async fn level2_known_variant_exists(
     client: &HttpClient,
 ) -> TestCaseResult {
     if !features.supports_beacon_v2 {
-        return TestCaseResult {
-            name: "Beacon known variant exists".into(),
-            level: ComplianceLevel::Level2,
-            passed: true,
-            error: Some("Beacon v2 feature disabled (supports_beacon_v2=false in features)".into()),
-            category: TestCategory::Other,
-            weight: 1.0,
-        };
+        return TestCaseResult::skip(
+            "Beacon known variant exists",
+            ComplianceLevel::Level2,
+            TestCategory::Interoperability,
+            "supports_beacon_v2=false in features",
+        );
     }
 
     let res = async {
@@ -164,14 +142,12 @@ async fn level2_known_variant_exists(
     }
     .await;
 
-    TestCaseResult {
-        name: "Beacon known variant exists".into(),
-        level: ComplianceLevel::Level2,
-        passed: res.is_ok(),
-        error: res.err().map(|e| e.to_string()),
-        category: TestCategory::Interoperability,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Beacon known variant exists",
+        ComplianceLevel::Level2,
+        TestCategory::Interoperability,
+        res,
+    )
 }
 
 async fn level2_negative_variant_not_exists(
@@ -180,14 +156,12 @@ async fn level2_negative_variant_not_exists(
     client: &HttpClient,
 ) -> TestCaseResult {
     if !features.supports_beacon_v2 {
-        return TestCaseResult {
-            name: "Beacon negative variant not exists".into(),
-            level: ComplianceLevel::Level2,
-            passed: true,
-            error: Some("Beacon v2 feature disabled (supports_beacon_v2=false in features)".into()),
-            category: TestCategory::Other,
-            weight: 1.0,
-        };
+        return TestCaseResult::skip(
+            "Beacon negative variant not exists",
+            ComplianceLevel::Level2,
+            TestCategory::Interoperability,
+            "supports_beacon_v2=false in features",
+        );
     }
 
     let res = async {
@@ -200,7 +174,7 @@ async fn level2_negative_variant_not_exists(
                     "query": {
                         "requestParameters": {
                             "referenceName": "1",
-                            "start": 999999999, // coordinate that should not exist in test data
+                            "start": 999999999,
                             "referenceBases": "C",
                             "alternateBases": "G"
                         }
@@ -229,12 +203,10 @@ async fn level2_negative_variant_not_exists(
     }
     .await;
 
-    TestCaseResult {
-        name: "Beacon negative variant not exists".into(),
-        level: ComplianceLevel::Level2,
-        passed: res.is_ok(),
-        error: res.err().map(|e| e.to_string()),
-        category: TestCategory::Interoperability,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Beacon negative variant not exists",
+        ComplianceLevel::Level2,
+        TestCategory::Interoperability,
+        res,
+    )
 }

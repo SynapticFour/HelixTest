@@ -14,17 +14,7 @@ Tests that appear in the main suite live in **`crates/framework/src/`**, one mod
 2. **Implement an `async fn` that returns `TestCaseResult`**:
    - Use `TestConfig` and `HttpClient` (or other helpers from `common`).
    - Call the service, assert on response.
-   - Return:
-     ```rust
-     TestCaseResult {
-         name: "Short human-readable name".into(),
-         level: ComplianceLevel::LevelN,  // 0–5
-         passed: result.is_ok(),
-         error: result.err().map(|e| e.to_string()),
-         category: TestCategory::Schema,  // or Lifecycle, Checksum, etc.
-         weight: 1.0,
-     }
-     ```
+   - Return `TestCaseResult::from_outcome(...)`, `::pass`, `::fail`, or `::skip` (do not treat skip as pass).
 3. **Register the test** in the service’s `run_*_checks` function by pushing the result of your new function onto the `tests` vector.
 4. **Rebuild and run** – `cargo run --bin helixtest -- --all` will include your test.
 
@@ -38,14 +28,12 @@ async fn level2_my_new_check(cfg: &TestConfig, client: &HttpClient) -> TestCaseR
         // ... validate v ...
         Ok::<(), anyhow::Error>(())
     }.await;
-    TestCaseResult {
-        name: "WES my new check".into(),
-        level: ComplianceLevel::Level2,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Lifecycle,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "WES my new check",
+        ComplianceLevel::Level2,
+        TestCategory::Lifecycle,
+        result,
+    )
 }
 ```
 
@@ -89,6 +77,7 @@ tests.push(level2_my_new_check(cfg, client).await);
 
 - [Architecture](architecture.md) – high-level layout and data flow.
 - [Scoring](scoring.md) – levels, scores, and coverage.
+- [Known limitations](known-limitations.md) – HMAC vs Passports, age vs Crypt4GH, two runners.
 - [Disclaimer](DISCLAIMER.md) – limitation of liability and use of test results.
 - [GA4GH official schemas](ga4gh-official-schemas.md) – outline for using official OpenAPI/JSON schemas instead of Rust-derived schemas.
 - GA4GH specifications for WES, TES, DRS, TRS, Beacon, Passports, etc., when implementing schema or behavioral checks.
@@ -97,7 +86,7 @@ tests.push(level2_my_new_check(cfg, client).await);
 
 - [x] **Legal:** LICENSE and NOTICE are in repo root; README and docs reference [DISCLAIMER](DISCLAIMER.md) and state that test results are not official certification.
 - [x] **Wording:** No unconditional “guarantee” or “certified”; use “conformance checks,” “for informational use,” “as is” where appropriate.
-- [x] **CI:** `cargo build --bin helixtest` and `cargo test --workspace` pass.
+- [x] **CI:** `cargo build --bin helixtest` and `cargo test --workspace` (with the live-stack crate excludes in `conformance.yml`) pass.
 - [x] **Config:** Default config or env fallbacks are documented; no secrets or internal URLs in repo.
 - [x] **Attribution:** Synaptic Four USP, copyright (© 2025), and contact (contact@synapticfour.com · synapticfour.com) appear in README, NOTICE, and CLI (banner/help).
 

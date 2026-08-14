@@ -2,6 +2,8 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::{env, fs, path::Path};
 
+use crate::util::profiles_dir;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ServiceConfig {
     #[serde(default, alias = "wes")]
@@ -93,19 +95,22 @@ impl TestConfig {
     }
 
     pub fn from_env_or_file() -> Result<Self> {
-        // Highest precedence: HELIXTEST_PROFILE pointing at profiles/<name>.toml
-        if let Ok(profile) = env::var("HELIXTEST_PROFILE") {
-            let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-                .parent()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .join("profiles")
-                .join(format!("{}.toml", profile));
+        Self::load(None)
+    }
+
+    /// Load config. `profile_override` wins over `HELIXTEST_PROFILE` (no process-env mutation).
+    pub fn load(profile_override: Option<&str>) -> Result<Self> {
+        let profile = profile_override
+            .map(|s| s.to_string())
+            .or_else(|| env::var("HELIXTEST_PROFILE").ok());
+
+        if let Some(profile) = profile {
+            let path = profiles_dir()?.join(format!("{}.toml", profile));
             let data = fs::read_to_string(&path).with_context(|| {
                 format!(
-                    "Failed to read profile config at {} (from HELIXTEST_PROFILE)",
-                    path.display()
+                    "Failed to read profile config at {} (from profile {:?})",
+                    path.display(),
+                    profile
                 )
             })?;
             let cfg: TestConfig =
@@ -122,7 +127,6 @@ impl TestConfig {
             return Ok(Self::apply_env_overrides(cfg));
         }
 
-        // Fallback: default config file name in current directory
         let default_path = Path::new("helixtest-config.toml");
         if default_path.exists() {
             let data = fs::read_to_string(default_path).with_context(|| {
@@ -163,6 +167,15 @@ mod tests {
 
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
+    fn set_env(key: &str, val: &str) {
+        // SAFETY: tests hold `ENV_LOCK`; this is the only mutation of these keys.
+        unsafe { env::set_var(key, val) }
+    }
+
+    fn unset_env(key: &str) {
+        unsafe { env::remove_var(key) }
+    }
+
     fn clear_env() {
         for k in [
             "HELIXTEST_PROFILE",
@@ -175,7 +188,7 @@ mod tests {
             "AUTH_URL",
             "HTSGET_URL",
         ] {
-            env::remove_var(k);
+            unset_env(k);
         }
     }
 
@@ -193,8 +206,8 @@ mod tests {
     fn env_vars_override_defaults() {
         let _g = ENV_LOCK.lock().unwrap();
         clear_env();
-        env::set_var("WES_URL", "http://example-wes");
-        env::set_var("TES_URL", "http://example-tes");
+        set_env("WES_URL", "http://example-wes");
+        set_env("TES_URL", "http://example-tes");
 
         let cfg = TestConfig::from_env_or_file().unwrap();
         assert_eq!(cfg.services.wes_url, "http://example-wes");
@@ -206,7 +219,7 @@ mod tests {
         let _g = ENV_LOCK.lock().unwrap();
         clear_env();
 
-        env::set_var("WES_URL", "http://env-wes");
+        set_env("WES_URL", "http://env-wes");
 
         let dir = tempdir().unwrap();
         let p = dir.path().join("cfg.toml");
@@ -222,7 +235,7 @@ auth_url = "http://file-auth"
 "#,
         )
         .unwrap();
-        env::set_var("HELIXTEST_CONFIG", p.to_string_lossy().to_string());
+        set_env("HELIXTEST_CONFIG", p.to_string_lossy().as_ref());
 
         let cfg = TestConfig::from_env_or_file().unwrap();
         assert_eq!(cfg.services.wes_url, "http://env-wes");
@@ -234,12 +247,26 @@ auth_url = "http://file-auth"
         let _g = ENV_LOCK.lock().unwrap();
         clear_env();
 
-        // Create a temporary "profiles/<name>.toml" by faking CARGO_MANIFEST_DIR is not possible,
-        // so we only assert that when HELIXTEST_PROFILE is set to a missing profile, we get a clear error.
-        env::set_var("HELIXTEST_PROFILE", "does-not-exist");
+        set_env("HELIXTEST_PROFILE", "does-not-exist");
         let err = TestConfig::from_env_or_file().unwrap_err().to_string();
         assert!(
-            err.contains("HELIXTEST_PROFILE") || err.contains("profile config"),
+            err.contains("HELIXTEST_PROFILE")
+                || err.contains("profile config")
+                || err.contains("does-not-exist"),
+            "unexpected error: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn load_profile_override_does_not_require_env() {
+        let _g = ENV_LOCK.lock().unwrap();
+        clear_env();
+        let err = TestConfig::load(Some("does-not-exist"))
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("does-not-exist") || err.contains("profile"),
             "unexpected error: {}",
             err
         );

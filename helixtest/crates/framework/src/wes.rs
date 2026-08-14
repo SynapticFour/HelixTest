@@ -8,29 +8,24 @@ use common::workflow::{
 };
 use std::time::Duration;
 
-use crate::{Features, Mode};
+use crate::{level0_http, Features, Mode};
 
 pub async fn run_wes_checks(
     _mode: Mode,
-    _features: &Features,
+    features: &Features,
     cfg: &TestConfig,
     client: &HttpClient,
 ) -> Result<ServiceReport> {
     let mut tests = Vec::new();
 
-    // Level 0: API reachable
     tests.push(level0_service_info_reachable(cfg, client).await);
-    // Level 1: schema compliance
     tests.push(level1_service_info_schema(cfg, client).await);
-    // Level 2: functional correctness (lifecycle + success output)
     tests.push(level2_lifecycle_success(cfg, client).await);
     tests.push(level2_failure_state(cfg, client).await);
     tests.push(level2_missing_inputs_error_state(cfg, client).await);
     tests.push(level2_incompatible_type_error_state(cfg, client).await);
-    // Level 3: invalid workflow handling
     tests.push(level3_invalid_workflow(cfg, client).await);
-    // Robustness: timeout and retry behavior
-    tests.push(robustness_polling_timeout_yields_clear_error(cfg, client).await);
+    tests.push(level2_scatter_gather(features, cfg, client).await);
 
     Ok(ServiceReport {
         service: ServiceKind::Wes,
@@ -43,25 +38,10 @@ async fn level0_service_info_reachable(cfg: &TestConfig, client: &HttpClient) ->
         "{}/service-info",
         cfg.services.wes_url.trim_end_matches('/')
     );
-    let res = client.inner().get(&url).send().await;
-    match res {
-        Ok(resp) => TestCaseResult {
-            name: "WES service-info reachable".into(),
-            level: ComplianceLevel::Level0,
-            passed: resp.status().is_success(),
-            error: (!resp.status().is_success()).then(|| format!("HTTP {}", resp.status())),
-            category: TestCategory::Other,
-            weight: 1.0,
-        },
-        Err(e) => TestCaseResult {
-            name: "WES service-info reachable".into(),
-            level: ComplianceLevel::Level0,
-            passed: false,
-            error: Some(e.to_string()),
-            category: TestCategory::Other,
-            weight: 1.0,
-        },
-    }
+    level0_http(
+        "WES service-info reachable",
+        client.inner().get(&url).send().await,
+    )
 }
 
 async fn level1_service_info_schema(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -76,7 +56,6 @@ async fn level1_service_info_schema(cfg: &TestConfig, client: &HttpClient) -> Te
             if let Err(e) = ga4gh_schemas::validate_wes_service_info(&v) {
                 errors.push(e.to_string());
             }
-            // GA4GH WES conformance: at least one supported version must be 1.0 or 1.1
             let ok_version = v
                 .get("supported_wes_versions")
                 .and_then(|x| x.as_array())
@@ -88,24 +67,45 @@ async fn level1_service_info_schema(cfg: &TestConfig, client: &HttpClient) -> Te
             if ok_version.is_none() {
                 errors.push("supported_wes_versions must contain at least 1.0 or 1.1".to_string());
             }
-            TestCaseResult {
-                name: "WES service-info schema (GA4GH official)".into(),
-                level: ComplianceLevel::Level1,
-                passed: errors.is_empty(),
-                error: (!errors.is_empty()).then(|| errors.join("; ")),
-                category: TestCategory::Schema,
-                weight: 1.0,
+            if errors.is_empty() {
+                TestCaseResult::pass(
+                    "WES service-info schema (GA4GH official)",
+                    ComplianceLevel::Level1,
+                    TestCategory::Schema,
+                )
+            } else {
+                TestCaseResult::fail(
+                    "WES service-info schema (GA4GH official)",
+                    ComplianceLevel::Level1,
+                    TestCategory::Schema,
+                    errors.join("; "),
+                )
             }
         }
-        Err(e) => TestCaseResult {
-            name: "WES service-info schema (GA4GH official)".into(),
-            level: ComplianceLevel::Level1,
-            passed: false,
-            error: Some(e.to_string()),
-            category: TestCategory::Schema,
-            weight: 1.0,
-        },
+        Err(e) => TestCaseResult::fail(
+            "WES service-info schema (GA4GH official)",
+            ComplianceLevel::Level1,
+            TestCategory::Schema,
+            e,
+        ),
     }
+}
+
+async fn poll_echo(
+    cfg: &TestConfig,
+    client: &HttpClient,
+    req: WesRunRequest,
+    timeout: Duration,
+) -> anyhow::Result<common::workflow::WesRunStatus> {
+    let run_id = submit_wes_run(client, &cfg.services.wes_url, &req).await?;
+    poll_wes_run_until_terminal(
+        client,
+        &cfg.services.wes_url,
+        &run_id,
+        timeout,
+        Duration::from_secs(2),
+    )
+    .await
 }
 
 async fn level2_lifecycle_success(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -117,15 +117,7 @@ async fn level2_lifecycle_success(cfg: &TestConfig, client: &HttpClient) -> Test
         workflow_params: serde_json::json!({ "message": "hello-ga4gh" }),
     };
     let result = async {
-        let run_id = submit_wes_run(client, &cfg.services.wes_url, &req).await?;
-        let status = poll_wes_run_until_terminal(
-            client,
-            &cfg.services.wes_url,
-            &run_id,
-            Duration::from_secs(300),
-            Duration::from_secs(2),
-        )
-        .await?;
+        let status = poll_echo(cfg, client, req, Duration::from_secs(300)).await?;
         if status.state != "COMPLETE" {
             anyhow::bail!(
                 "Expected COMPLETE, got {} (states: {:?})",
@@ -133,13 +125,8 @@ async fn level2_lifecycle_success(cfg: &TestConfig, client: &HttpClient) -> Test
                 status.states_history
             );
         }
-        // GA4GH WES: allow any spec-typical pre-terminal state before COMPLETE (implementations may
-        // skip QUEUED if transitions are fast, or use INITIALIZING without exposing QUEUED).
         let saw_pre_terminal = status.states_history.iter().any(|s| {
-            matches!(
-                s.as_str(),
-                "QUEUED" | "INITIALIZING" | "RUNNING"
-            )
+            matches!(s.as_str(), "QUEUED" | "INITIALIZING" | "RUNNING")
         });
         if !saw_pre_terminal {
             anyhow::bail!(
@@ -147,7 +134,7 @@ async fn level2_lifecycle_success(cfg: &TestConfig, client: &HttpClient) -> Test
                 status.states_history
             );
         }
-        let outputs = fetch_wes_run_output(client, &cfg.services.wes_url, &run_id).await?;
+        let outputs = fetch_wes_run_output(client, &cfg.services.wes_url, &status.run_id).await?;
         let echoed = outputs
             .get("echo_out")
             .and_then(|v| v.as_str())
@@ -158,16 +145,12 @@ async fn level2_lifecycle_success(cfg: &TestConfig, client: &HttpClient) -> Test
         Ok::<(), anyhow::Error>(())
     }
     .await;
-    TestCaseResult {
-        name:
-            "WES lifecycle success echo (API may show QUEUED/INITIALIZING/RUNNING before COMPLETE)"
-                .into(),
-        level: ComplianceLevel::Level2,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Lifecycle,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "WES lifecycle success echo (API may show QUEUED/INITIALIZING/RUNNING before COMPLETE)",
+        ComplianceLevel::Level2,
+        TestCategory::Lifecycle,
+        result,
+    )
 }
 
 async fn level2_failure_state(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -179,53 +162,34 @@ async fn level2_failure_state(cfg: &TestConfig, client: &HttpClient) -> TestCase
         workflow_params: serde_json::json!({}),
     };
     let result = async {
-        let run_id = submit_wes_run(client, &cfg.services.wes_url, &req).await?;
-        let status = poll_wes_run_until_terminal(
-            client,
-            &cfg.services.wes_url,
-            &run_id,
-            Duration::from_secs(300),
-            Duration::from_secs(2),
-        )
-        .await?;
+        let status = poll_echo(cfg, client, req, Duration::from_secs(300)).await?;
         if status.state != "EXECUTOR_ERROR" && status.state != "SYSTEM_ERROR" {
             anyhow::bail!("Expected error state, got {}", status.state);
         }
         Ok::<(), anyhow::Error>(())
     }
     .await;
-    TestCaseResult {
-        name: "WES failure state for bad workflow".into(),
-        level: ComplianceLevel::Level2,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Lifecycle,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "WES failure state for bad workflow",
+        ComplianceLevel::Level2,
+        TestCategory::Lifecycle,
+        result,
+    )
 }
 
 async fn level2_missing_inputs_error_state(
     cfg: &TestConfig,
     client: &HttpClient,
 ) -> TestCaseResult {
-    // Use a valid workflow but omit required input parameters
     let req = WesRunRequest {
         workflow_url: "trs://test-tool/cwl-echo/1.0".to_owned(),
         workflow_type: "CWL".to_owned(),
         workflow_type_version: "v1.2".to_owned(),
         tags: None,
-        workflow_params: serde_json::json!({}), // missing "message"
+        workflow_params: serde_json::json!({}),
     };
     let result = async {
-        let run_id = submit_wes_run(client, &cfg.services.wes_url, &req).await?;
-        let status = poll_wes_run_until_terminal(
-            client,
-            &cfg.services.wes_url,
-            &run_id,
-            Duration::from_secs(300),
-            Duration::from_secs(2),
-        )
-        .await?;
+        let status = poll_echo(cfg, client, req, Duration::from_secs(300)).await?;
         if status.state != "EXECUTOR_ERROR" && status.state != "SYSTEM_ERROR" {
             anyhow::bail!(
                 "Missing-input workflow expected EXECUTOR_ERROR or SYSTEM_ERROR, got {} (states: {:?})",
@@ -236,38 +200,27 @@ async fn level2_missing_inputs_error_state(
         Ok::<(), anyhow::Error>(())
     }
     .await;
-    TestCaseResult {
-        name: "WES missing inputs leads to error state".into(),
-        level: ComplianceLevel::Level2,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Lifecycle,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "WES missing inputs leads to error state",
+        ComplianceLevel::Level2,
+        TestCategory::Lifecycle,
+        result,
+    )
 }
 
 async fn level2_incompatible_type_error_state(
     cfg: &TestConfig,
     client: &HttpClient,
 ) -> TestCaseResult {
-    // Use a CWL workflow but declare an incompatible workflow_type
     let req = WesRunRequest {
         workflow_url: "trs://test-tool/cwl-echo/1.0".to_owned(),
-        workflow_type: "WDL".to_owned(), // intentionally wrong
+        workflow_type: "WDL".to_owned(),
         workflow_type_version: "1.0".to_owned(),
         tags: None,
         workflow_params: serde_json::json!({ "message": "hello-type-mismatch" }),
     };
     let result = async {
-        let run_id = submit_wes_run(client, &cfg.services.wes_url, &req).await?;
-        let status = poll_wes_run_until_terminal(
-            client,
-            &cfg.services.wes_url,
-            &run_id,
-            Duration::from_secs(300),
-            Duration::from_secs(2),
-        )
-        .await?;
+        let status = poll_echo(cfg, client, req, Duration::from_secs(300)).await?;
         if status.state != "EXECUTOR_ERROR" && status.state != "SYSTEM_ERROR" {
             anyhow::bail!(
                 "Incompatible-type workflow expected EXECUTOR_ERROR or SYSTEM_ERROR, got {} (states: {:?})",
@@ -278,19 +231,15 @@ async fn level2_incompatible_type_error_state(
         Ok::<(), anyhow::Error>(())
     }
     .await;
-    TestCaseResult {
-        name: "WES incompatible workflow_type leads to error state".into(),
-        level: ComplianceLevel::Level2,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Lifecycle,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "WES incompatible workflow_type leads to error state",
+        ComplianceLevel::Level2,
+        TestCategory::Lifecycle,
+        result,
+    )
 }
 
 async fn level3_invalid_workflow(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
-    // This test assumes the implementation accepts the run but fails it during execution
-    // due to an invalid or non-existent workflow descriptor.
     let req = WesRunRequest {
         workflow_url: "trs://nonexistent/invalid/0.0".to_owned(),
         workflow_type: "CWL".to_owned(),
@@ -299,15 +248,7 @@ async fn level3_invalid_workflow(cfg: &TestConfig, client: &HttpClient) -> TestC
         workflow_params: serde_json::json!({}),
     };
     let result = async {
-        let run_id = submit_wes_run(client, &cfg.services.wes_url, &req).await?;
-        let status = poll_wes_run_until_terminal(
-            client,
-            &cfg.services.wes_url,
-            &run_id,
-            Duration::from_secs(300),
-            Duration::from_secs(2),
-        )
-        .await?;
+        let status = poll_echo(cfg, client, req, Duration::from_secs(300)).await?;
         if status.state != "EXECUTOR_ERROR" && status.state != "SYSTEM_ERROR" {
             anyhow::bail!(
                 "Invalid workflow run expected EXECUTOR_ERROR or SYSTEM_ERROR, got {} (states: {:?})",
@@ -318,53 +259,59 @@ async fn level3_invalid_workflow(cfg: &TestConfig, client: &HttpClient) -> TestC
         Ok::<(), anyhow::Error>(())
     }
     .await;
-    TestCaseResult {
-        name: "WES invalid workflow leads to error state".into(),
-        level: ComplianceLevel::Level3,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Other,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "WES invalid workflow leads to error state",
+        ComplianceLevel::Level3,
+        TestCategory::Other,
+        result,
+    )
 }
 
-/// Robustness: assert that when polling exceeds the timeout, the system returns a clear
-/// error (no hang). Submits a run then polls with a 1s timeout; we expect a timeout error.
-async fn robustness_polling_timeout_yields_clear_error(
+async fn level2_scatter_gather(
+    features: &Features,
     cfg: &TestConfig,
     client: &HttpClient,
 ) -> TestCaseResult {
+    const NAME: &str = "WES scatter/gather workflow";
+    if !features.supports_scatter_gather {
+        return TestCaseResult::skip(
+            NAME,
+            ComplianceLevel::Level2,
+            TestCategory::WorkflowCorrectness,
+            "supports_scatter_gather=false in features",
+        );
+    }
     let req = WesRunRequest {
-        workflow_url: "trs://test-tool/echo/1.0".to_owned(),
+        workflow_url: "trs://test-tool/scatter-gather/1.0".to_owned(),
         workflow_type: "CWL".to_owned(),
         workflow_type_version: "v1.2".to_owned(),
         tags: None,
-        workflow_params: serde_json::json!({ "message": "hello" }),
+        workflow_params: serde_json::json!({ "items": [1, 2, 3, 4] }),
     };
     let result = async {
-        let run_id = submit_wes_run(client, &cfg.services.wes_url, &req)
-            .await
-            .map_err(|e| e.to_string())?;
-        poll_wes_run_until_terminal(
+        let run_id = submit_wes_run(client, &cfg.services.wes_url, &req).await?;
+        let status = poll_wes_run_until_terminal(
             client,
             &cfg.services.wes_url,
             &run_id,
-            Duration::from_secs(1),
-            Duration::from_millis(200),
+            Duration::from_secs(600),
+            Duration::from_secs(5),
         )
-        .await
-        .map_err(|e| e.to_string())
+        .await?;
+        if status.state != "COMPLETE" {
+            anyhow::bail!("Scatter/gather expected COMPLETE, got {}", status.state);
+        }
+        let outputs = fetch_wes_run_output(client, &cfg.services.wes_url, &run_id).await?;
+        if outputs.get("scatter_result").is_none() {
+            anyhow::bail!("Missing scatter_result in outputs: {}", outputs);
+        }
+        Ok::<(), anyhow::Error>(())
     }
     .await;
-    let err_msg = result.err().unwrap_or_default();
-    let passed =
-        err_msg.to_lowercase().contains("timed out") || err_msg.to_lowercase().contains("timeout");
-    TestCaseResult {
-        name: "Robustness: polling timeout yields clear error".into(),
-        level: ComplianceLevel::Level2,
-        passed,
-        error: if passed { None } else { Some(err_msg) },
-        category: TestCategory::Robustness,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        NAME,
+        ComplianceLevel::Level2,
+        TestCategory::WorkflowCorrectness,
+        result,
+    )
 }

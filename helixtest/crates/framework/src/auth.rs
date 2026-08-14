@@ -1,4 +1,6 @@
-//! Level 4 (Security) conformance: GA4GH Passports / JWT auth (valid token, expired, scope, missing).
+//! Level 4 security: HMAC-SHA256 JWT fixture against DRS (shared secret), plus optional
+//! token-protected endpoints. This is **not** GA4GH Passports/OIDC; Passport checks live in
+//! `--mode ferrum+infra` (`infra.rs`).
 
 use anyhow::Result;
 use chrono::Duration;
@@ -6,14 +8,22 @@ use common::auth::build_jwt;
 use common::config::TestConfig;
 use common::http::HttpClient;
 use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCaseResult, TestCategory};
+use tracing::warn;
 
-use crate::{Features, Mode};
+use crate::{level0_http, Features, Mode};
 
 fn auth_secret() -> String {
-    std::env::var("HELIXTEST_SHARED_SECRET").unwrap_or_else(|_| "test-secret".to_owned())
+    match std::env::var("HELIXTEST_SHARED_SECRET") {
+        Ok(s) if !s.is_empty() => s,
+        _ => {
+            warn!(
+                "HELIXTEST_SHARED_SECRET unset; using built-in HMAC fixture secret (demo stacks only)"
+            );
+            "test-secret".to_owned()
+        }
+    }
 }
 
-/// Test object ID used for auth checks (DRS GET with Bearer). Override via HELIXTEST_AUTH_OBJECT_ID.
 fn auth_test_object_id() -> String {
     std::env::var("HELIXTEST_AUTH_OBJECT_ID").unwrap_or_else(|_| "test-object-1".to_owned())
 }
@@ -33,13 +43,15 @@ pub async fn run_auth_checks(
     client: &HttpClient,
 ) -> Result<ServiceReport> {
     if token_only_mode(cfg) {
-        let tests = run_token_protected_endpoint_checks(cfg, client).await;
+        let mut tests = vec![level0_auth_url(cfg, client).await];
+        tests.extend(run_token_protected_endpoint_checks(cfg, client).await);
         return Ok(ServiceReport {
             service: ServiceKind::Auth,
             tests,
         });
     }
     let mut tests = Vec::new();
+    tests.push(level0_auth_url(cfg, client).await);
     tests.push(level4_valid_token_grants_access(cfg, client).await);
     tests.push(level4_expired_token_rejected(cfg, client).await);
     tests.push(level4_wrong_scope_denied(cfg, client).await);
@@ -49,6 +61,23 @@ pub async fn run_auth_checks(
         service: ServiceKind::Auth,
         tests,
     })
+}
+
+async fn level0_auth_url(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
+    let base = cfg.services.auth_url.trim_end_matches('/');
+    if base.is_empty() {
+        return TestCaseResult::skip(
+            "Auth service URL reachable",
+            ComplianceLevel::Level0,
+            TestCategory::Other,
+            "auth_url is empty",
+        );
+    }
+    let url = format!("{}/service-info", base);
+    level0_http(
+        "Auth /service-info reachable (auth_url)",
+        client.inner().get(&url).send().await,
+    )
 }
 
 async fn level4_valid_token_grants_access(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -69,21 +98,19 @@ async fn level4_valid_token_grants_access(cfg: &TestConfig, client: &HttpClient)
         let resp = client.inner().get(&url).bearer_auth(&token).send().await?;
         anyhow::ensure!(
             resp.status().is_success(),
-            "Valid token should be accepted, got {}",
+            "Valid HMAC JWT should be accepted, got {}",
             resp.status()
         );
         Ok::<(), anyhow::Error>(())
     }
     .await;
 
-    TestCaseResult {
-        name: "Auth: valid token grants access".into(),
-        level: ComplianceLevel::Level4,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Security,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Auth (HMAC JWT fixture): valid token grants DRS access",
+        ComplianceLevel::Level4,
+        TestCategory::Security,
+        result,
+    )
 }
 
 async fn run_token_protected_endpoint_checks(
@@ -91,14 +118,12 @@ async fn run_token_protected_endpoint_checks(
     client: &HttpClient,
 ) -> Vec<TestCaseResult> {
     if cfg.auth_checks.protected_endpoints.is_empty() {
-        return vec![TestCaseResult {
-            name: "Auth token-only mode configured but no protected endpoints set".into(),
-            level: ComplianceLevel::Level4,
-            passed: true,
-            error: Some("skipped: set [auth_checks].protected_endpoints in profile/config".into()),
-            category: TestCategory::Security,
-            weight: 1.0,
-        }];
+        return vec![TestCaseResult::skip(
+            "Auth token-only mode configured but no protected endpoints set",
+            ComplianceLevel::Level4,
+            TestCategory::Security,
+            "set [auth_checks].protected_endpoints in profile/config",
+        )];
     }
     let token_env = cfg
         .auth_checks
@@ -136,80 +161,76 @@ async fn run_token_protected_endpoint_checks(
         };
 
         let no_token = req(None).send().await;
-        let no_token_passed = no_token
-            .as_ref()
-            .map(|r| r.status().as_u16() == 401)
-            .unwrap_or(false);
-        tests.push(TestCaseResult {
-            name: format!("Auth token-only: {} without bearer -> 401", endpoint.name),
-            level: ComplianceLevel::Level4,
-            passed: no_token_passed,
-            error: if no_token_passed {
-                None
-            } else {
-                Some(match no_token {
-                    Ok(resp) => format!("expected 401, got {}", resp.status()),
-                    Err(e) => e.to_string(),
-                })
-            },
-            category: TestCategory::Security,
-            weight: 1.0,
+        tests.push(match no_token {
+            Ok(resp) if resp.status().as_u16() == 401 => TestCaseResult::pass(
+                format!("Auth token-only: {} without bearer -> 401", endpoint.name),
+                ComplianceLevel::Level4,
+                TestCategory::Security,
+            ),
+            Ok(resp) => TestCaseResult::fail(
+                format!("Auth token-only: {} without bearer -> 401", endpoint.name),
+                ComplianceLevel::Level4,
+                TestCategory::Security,
+                format!("expected 401, got {}", resp.status()),
+            ),
+            Err(e) => TestCaseResult::fail(
+                format!("Auth token-only: {} without bearer -> 401", endpoint.name),
+                ComplianceLevel::Level4,
+                TestCategory::Security,
+                e,
+            ),
         });
 
         if endpoint.check_invalid_token.unwrap_or(true) {
             let invalid = req(Some(&invalid_token)).send().await;
-            let invalid_passed = invalid
-                .as_ref()
-                .map(|r| r.status().as_u16() == 401)
-                .unwrap_or(false);
-            tests.push(TestCaseResult {
-                name: format!("Auth token-only: {} invalid bearer -> 401", endpoint.name),
-                level: ComplianceLevel::Level4,
-                passed: invalid_passed,
-                error: if invalid_passed {
-                    None
-                } else {
-                    Some(match invalid {
-                        Ok(resp) => format!("expected 401, got {}", resp.status()),
-                        Err(e) => e.to_string(),
-                    })
-                },
-                category: TestCategory::Security,
-                weight: 1.0,
+            tests.push(match invalid {
+                Ok(resp) if resp.status().as_u16() == 401 => TestCaseResult::pass(
+                    format!("Auth token-only: {} invalid bearer -> 401", endpoint.name),
+                    ComplianceLevel::Level4,
+                    TestCategory::Security,
+                ),
+                Ok(resp) => TestCaseResult::fail(
+                    format!("Auth token-only: {} invalid bearer -> 401", endpoint.name),
+                    ComplianceLevel::Level4,
+                    TestCategory::Security,
+                    format!("expected 401, got {}", resp.status()),
+                ),
+                Err(e) => TestCaseResult::fail(
+                    format!("Auth token-only: {} invalid bearer -> 401", endpoint.name),
+                    ComplianceLevel::Level4,
+                    TestCategory::Security,
+                    e,
+                ),
             });
         }
 
         let valid_name = format!("Auth token-only: {} valid bearer -> 2xx", endpoint.name);
         let Some(token) = valid_token.as_deref() else {
-            tests.push(TestCaseResult {
-                name: valid_name,
-                level: ComplianceLevel::Level4,
-                passed: true,
-                error: Some(format!("skipped: set {} env var", token_env)),
-                category: TestCategory::Security,
-                weight: 1.0,
-            });
+            tests.push(TestCaseResult::skip(
+                valid_name,
+                ComplianceLevel::Level4,
+                TestCategory::Security,
+                format!("set {} env var", token_env),
+            ));
             continue;
         };
         let valid = req(Some(token)).send().await;
-        let valid_passed = valid
-            .as_ref()
-            .map(|r| r.status().is_success())
-            .unwrap_or(false);
-        tests.push(TestCaseResult {
-            name: valid_name,
-            level: ComplianceLevel::Level4,
-            passed: valid_passed,
-            error: if valid_passed {
-                None
-            } else {
-                Some(match valid {
-                    Ok(resp) => format!("expected 2xx, got {}", resp.status()),
-                    Err(e) => e.to_string(),
-                })
-            },
-            category: TestCategory::Security,
-            weight: 1.0,
+        tests.push(match valid {
+            Ok(resp) if resp.status().is_success() => {
+                TestCaseResult::pass(valid_name, ComplianceLevel::Level4, TestCategory::Security)
+            }
+            Ok(resp) => TestCaseResult::fail(
+                valid_name,
+                ComplianceLevel::Level4,
+                TestCategory::Security,
+                format!("expected 2xx, got {}", resp.status()),
+            ),
+            Err(e) => TestCaseResult::fail(
+                valid_name,
+                ComplianceLevel::Level4,
+                TestCategory::Security,
+                e,
+            ),
         });
     }
     tests
@@ -240,14 +261,12 @@ async fn level4_expired_token_rejected(cfg: &TestConfig, client: &HttpClient) ->
     }
     .await;
 
-    TestCaseResult {
-        name: "Auth: expired token rejected".into(),
-        level: ComplianceLevel::Level4,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Security,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Auth (HMAC JWT fixture): expired token rejected",
+        ComplianceLevel::Level4,
+        TestCategory::Security,
+        result,
+    )
 }
 
 async fn level4_wrong_scope_denied(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -275,14 +294,12 @@ async fn level4_wrong_scope_denied(cfg: &TestConfig, client: &HttpClient) -> Tes
     }
     .await;
 
-    TestCaseResult {
-        name: "Auth: wrong scope denied".into(),
-        level: ComplianceLevel::Level4,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Security,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Auth (HMAC JWT fixture): wrong scope denied",
+        ComplianceLevel::Level4,
+        TestCategory::Security,
+        result,
+    )
 }
 
 async fn level4_missing_token_returns_401(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -302,14 +319,12 @@ async fn level4_missing_token_returns_401(cfg: &TestConfig, client: &HttpClient)
     }
     .await;
 
-    TestCaseResult {
-        name: "Auth: missing token returns 401".into(),
-        level: ComplianceLevel::Level4,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Security,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Auth (HMAC JWT fixture): missing token returns 401",
+        ComplianceLevel::Level4,
+        TestCategory::Security,
+        result,
+    )
 }
 
 #[cfg(test)]
@@ -339,7 +354,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn token_only_mode_without_endpoints_yields_skip_like_result() {
+    async fn token_only_mode_without_endpoints_yields_skip() {
         let cfg = TestConfig {
             services: common::config::ServiceConfig {
                 wes_url: String::new(),
@@ -360,7 +375,7 @@ mod tests {
         };
         let tests = run_token_protected_endpoint_checks(&cfg, &HttpClient::new()).await;
         assert_eq!(tests.len(), 1);
-        assert!(tests[0].passed);
+        assert_eq!(tests[0].status, common::report::TestStatus::Skip);
         assert!(tests[0].error.as_deref().unwrap_or("").contains("skipped"));
     }
 }

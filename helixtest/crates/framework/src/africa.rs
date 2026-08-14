@@ -5,7 +5,7 @@ use common::http::HttpClient;
 use common::report::{
     ComplianceLevel, OverallReport, ServiceKind, ServiceReport, TestCaseResult, TestCategory,
 };
-use std::path::Path;
+use common::util::helixtest_root;
 use tracing::info;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,40 +42,22 @@ fn gateway_base(cfg: &TestConfig) -> String {
 }
 
 fn pass(name: &str, category: TestCategory) -> TestCaseResult {
-    TestCaseResult {
-        name: name.into(),
-        level: ComplianceLevel::Level2,
-        passed: true,
-        error: None,
-        category,
-        weight: 1.0,
-    }
+    TestCaseResult::pass(name, ComplianceLevel::Level2, category)
 }
 
 fn fail(name: &str, category: TestCategory, err: impl std::fmt::Display) -> TestCaseResult {
-    TestCaseResult {
-        name: name.into(),
-        level: ComplianceLevel::Level2,
-        passed: false,
-        error: Some(err.to_string()),
-        category,
-        weight: 1.0,
-    }
+    TestCaseResult::fail(name, ComplianceLevel::Level2, category, err)
 }
 
 fn skip(name: &str, reason: &str) -> TestCaseResult {
-    TestCaseResult {
-        name: name.into(),
-        level: ComplianceLevel::Level1,
-        passed: true,
-        error: Some(format!("skipped: {reason}")),
-        category: TestCategory::Other,
-        weight: 0.0,
-    }
+    TestCaseResult::skip(name, ComplianceLevel::Level1, TestCategory::Other, reason)
 }
 
-pub async fn run_africa(profile: AfricaProfile) -> anyhow::Result<OverallReport> {
-    let cfg = TestConfig::from_env_or_file()?;
+pub async fn run_africa(
+    profile: AfricaProfile,
+    config_profile: Option<&str>,
+) -> anyhow::Result<OverallReport> {
+    let cfg = TestConfig::load(config_profile)?;
     let client = HttpClient::new();
     let base = gateway_base(&cfg);
     info!(?profile, %base, "Running HelixTest Africa mode");
@@ -175,12 +157,13 @@ async fn run_offline_profile(
 
 async fn run_ont_profile(client: &HttpClient, base: &str) -> Vec<TestCaseResult> {
     let mut tests = Vec::new();
-    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("fixtures/africa/synthetic_ont_file.pod5.stub");
+    let fixture = match helixtest_root() {
+        Ok(r) => r.join("fixtures/africa/synthetic_ont_file.pod5.stub"),
+        Err(e) => {
+            tests.push(fail("ont: load fixture stub", TestCategory::Lifecycle, e));
+            return tests;
+        }
+    };
     let stub = match std::fs::read(&fixture) {
         Ok(b) => b,
         Err(e) => {
@@ -203,15 +186,19 @@ async fn run_ont_profile(client: &HttpClient, base: &str) -> Vec<TestCaseResult>
         }
     });
 
+    let part = match reqwest::multipart::Part::bytes(stub)
+        .file_name("synthetic_ont_file.pod5.stub")
+        .mime_str("application/octet-stream")
+    {
+        Ok(p) => p,
+        Err(e) => {
+            tests.push(fail("ont: multipart fixture", TestCategory::Lifecycle, e));
+            return tests;
+        }
+    };
     let form = reqwest::multipart::Form::new()
         .text("ont_metadata", ont_meta.to_string())
-        .part(
-            "file",
-            reqwest::multipart::Part::bytes(stub)
-                .file_name("synthetic_ont_file.pod5.stub")
-                .mime_str("application/octet-stream")
-                .unwrap(),
-        );
+        .part("file", part);
 
     let url = format!("{}/api/v1/ingest/ont", base);
     let resp = client.inner().post(&url).multipart(form).send().await;
@@ -391,18 +378,10 @@ async fn run_federation_profile(client: &HttpClient, base: &str) -> Vec<TestCase
         base.trim_end_matches('/')
     );
     match client.get_json(&local_url).await {
-        Ok(v) => {
-            tests.push(pass(
-                "federation: local federate query succeeds",
-                TestCategory::Interoperability,
-            ));
-            if v["meta"]["warnings"].is_array() {
-                tests.push(pass(
-                    "federation: warnings present when peers fail",
-                    TestCategory::Robustness,
-                ));
-            }
-        }
+        Ok(_) => tests.push(pass(
+            "federation: local federate query succeeds",
+            TestCategory::Interoperability,
+        )),
         Err(e) => tests.push(fail(
             "federation: local federate query succeeds",
             TestCategory::Interoperability,
@@ -410,6 +389,30 @@ async fn run_federation_profile(client: &HttpClient, base: &str) -> Vec<TestCase
         )),
     }
 
-    let _ = peer_base;
+    let peer_url = format!(
+        "{}/ga4gh/beacon/v2/g_variants?referenceName=1&start=1000&referenceBases=A&alternateBases=T",
+        peer_base.trim_end_matches('/')
+    );
+    match client.get_json(&peer_url).await {
+        Ok(v) => {
+            tests.push(pass(
+                "federation: peer Beacon query succeeds",
+                TestCategory::Interoperability,
+            ));
+            if v.get("response").is_none() && v.get("meta").is_none() {
+                tests.push(fail(
+                    "federation: peer Beacon body shape",
+                    TestCategory::Schema,
+                    format!("expected Beacon-shaped JSON, got {v}"),
+                ));
+            }
+        }
+        Err(e) => tests.push(fail(
+            "federation: peer Beacon query succeeds",
+            TestCategory::Interoperability,
+            e,
+        )),
+    }
+
     tests
 }

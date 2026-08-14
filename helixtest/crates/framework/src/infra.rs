@@ -36,36 +36,15 @@ fn gateway_base(cfg: &TestConfig) -> String {
 }
 
 fn pass(name: &str, category: TestCategory) -> TestCaseResult {
-    TestCaseResult {
-        name: name.into(),
-        level: ComplianceLevel::Level2,
-        passed: true,
-        error: None,
-        category,
-        weight: 1.0,
-    }
+    TestCaseResult::pass(name, ComplianceLevel::Level2, category)
 }
 
 fn fail(name: &str, category: TestCategory, err: impl std::fmt::Display) -> TestCaseResult {
-    TestCaseResult {
-        name: name.into(),
-        level: ComplianceLevel::Level2,
-        passed: false,
-        error: Some(err.to_string()),
-        category,
-        weight: 1.0,
-    }
+    TestCaseResult::fail(name, ComplianceLevel::Level2, category, err)
 }
 
 fn skip(name: &str, reason: &str) -> TestCaseResult {
-    TestCaseResult {
-        name: name.into(),
-        level: ComplianceLevel::Level1,
-        passed: true,
-        error: Some(format!("skipped: {reason}")),
-        category: TestCategory::Other,
-        weight: 0.0,
-    }
+    TestCaseResult::skip(name, ComplianceLevel::Level1, TestCategory::Other, reason)
 }
 
 async fn broker_login(client: &HttpClient) -> anyhow::Result<(String, String)> {
@@ -134,8 +113,8 @@ async fn broker_login(client: &HttpClient) -> anyhow::Result<(String, String)> {
     Ok((subject, passport))
 }
 
-pub async fn run_infra() -> anyhow::Result<OverallReport> {
-    let cfg = TestConfig::from_env_or_file()?;
+pub async fn run_infra(config_profile: Option<&str>) -> anyhow::Result<OverallReport> {
+    let cfg = TestConfig::load(config_profile)?;
     let client = HttpClient::new();
     let base = gateway_base(&cfg);
     info!(%base, broker = %broker_url(), registry = %service_registry_url(), "Running HelixTest ferrum+infra mode");

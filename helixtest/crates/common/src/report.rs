@@ -22,6 +22,17 @@ impl ComplianceLevel {
             ComplianceLevel::Level5 => 5,
         }
     }
+
+    fn all() -> [ComplianceLevel; 6] {
+        [
+            ComplianceLevel::Level0,
+            ComplianceLevel::Level1,
+            ComplianceLevel::Level2,
+            ComplianceLevel::Level3,
+            ComplianceLevel::Level4,
+            ComplianceLevel::Level5,
+        ]
+    }
 }
 
 impl fmt::Display for ComplianceLevel {
@@ -43,6 +54,25 @@ pub enum ServiceKind {
     E2e,
     Africa,
     Infra,
+}
+
+impl ServiceKind {
+    /// Canonical report order (WES, TES, DRS, …).
+    pub fn canonical_order(self) -> u8 {
+        match self {
+            ServiceKind::Wes => 0,
+            ServiceKind::Tes => 1,
+            ServiceKind::Drs => 2,
+            ServiceKind::Trs => 3,
+            ServiceKind::Beacon => 4,
+            ServiceKind::Htsget => 5,
+            ServiceKind::Auth => 6,
+            ServiceKind::Crypt4gh => 7,
+            ServiceKind::E2e => 8,
+            ServiceKind::Africa => 9,
+            ServiceKind::Infra => 10,
+        }
+    }
 }
 
 impl fmt::Display for ServiceKind {
@@ -93,23 +123,97 @@ impl fmt::Display for TestCategory {
     }
 }
 
-#[allow(dead_code)] // used by serde default
-fn default_weight() -> f32 {
-    1.0
+/// Outcome of a single check. Skip is excluded from levels, scores, and `--fail-level`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum TestStatus {
+    #[default]
+    Pass,
+    Fail,
+    Skip,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TestCaseResult {
     pub name: String,
     pub level: ComplianceLevel,
+    pub status: TestStatus,
+    /// `true` iff `status == Pass`. Prefer `status` for new consumers; skips are not passes.
     pub passed: bool,
     pub error: Option<String>,
-    /// Category of the test (used for coverage/scoring reports)
-    #[serde(default)]
     pub category: TestCategory,
-    /// Relative importance weight (default 1.0; critical tests can use >1.0)
-    #[serde(default = "default_weight")]
+    /// Relative importance. `<= 0` is omitted from `weighted_score` (skips use 0).
     pub weight: f32,
+}
+
+impl TestCaseResult {
+    pub fn pass(name: impl Into<String>, level: ComplianceLevel, category: TestCategory) -> Self {
+        Self {
+            name: name.into(),
+            level,
+            status: TestStatus::Pass,
+            passed: true,
+            error: None,
+            category,
+            weight: 1.0,
+        }
+    }
+
+    pub fn fail(
+        name: impl Into<String>,
+        level: ComplianceLevel,
+        category: TestCategory,
+        err: impl fmt::Display,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            level,
+            status: TestStatus::Fail,
+            passed: false,
+            error: Some(err.to_string()),
+            category,
+            weight: 1.0,
+        }
+    }
+
+    pub fn skip(
+        name: impl Into<String>,
+        level: ComplianceLevel,
+        category: TestCategory,
+        reason: impl fmt::Display,
+    ) -> Self {
+        let reason = reason.to_string();
+        let error = if reason.starts_with("skipped:") {
+            reason
+        } else {
+            format!("skipped: {reason}")
+        };
+        Self {
+            name: name.into(),
+            level,
+            status: TestStatus::Skip,
+            passed: false,
+            error: Some(error),
+            category,
+            weight: 0.0,
+        }
+    }
+
+    pub fn from_outcome(
+        name: impl Into<String>,
+        level: ComplianceLevel,
+        category: TestCategory,
+        result: Result<(), impl fmt::Display>,
+    ) -> Self {
+        match result {
+            Ok(()) => Self::pass(name, level, category),
+            Err(e) => Self::fail(name, level, category, e),
+        }
+    }
+
+    fn is_executed(&self) -> bool {
+        self.status != TestStatus::Skip
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -124,63 +228,41 @@ pub struct SkippedService {
     pub reason: String,
 }
 
-/// Canonical order for deterministic report output (table, JSON).
-fn service_order(s: &ServiceKind) -> u8 {
-    match s {
-        ServiceKind::Wes => 0,
-        ServiceKind::Tes => 1,
-        ServiceKind::Drs => 2,
-        ServiceKind::Trs => 3,
-        ServiceKind::Beacon => 4,
-        ServiceKind::Htsget => 5,
-        ServiceKind::Auth => 6,
-        ServiceKind::Crypt4gh => 7,
-        ServiceKind::E2e => 8,
-        ServiceKind::Africa => 9,
-        ServiceKind::Infra => 10,
-    }
-}
-
 impl ServiceReport {
+    /// Highest N such that every *executed* (non-skip) test at level N passed.
+    /// Empty or skip-only levels are ignored and do not block a higher N.
+    /// Failures at N stop the climb (service level is the last fully-green N).
     pub fn achieved_level(&self) -> ComplianceLevel {
-        // A service's level is the max level where all tests up to that level passed.
         let mut max_level = ComplianceLevel::Level0;
-        for lvl in [
-            ComplianceLevel::Level0,
-            ComplianceLevel::Level1,
-            ComplianceLevel::Level2,
-            ComplianceLevel::Level3,
-            ComplianceLevel::Level4,
-            ComplianceLevel::Level5,
-        ] {
-            let any_at_level = self.tests.iter().any(|t| t.level == lvl);
-            if any_at_level
-                && self
-                    .tests
-                    .iter()
-                    .filter(|t| t.level == lvl)
-                    .all(|t| t.passed)
-            {
+        for lvl in ComplianceLevel::all() {
+            let executed: Vec<&TestCaseResult> = self
+                .tests
+                .iter()
+                .filter(|t| t.level == lvl && t.is_executed())
+                .collect();
+            if executed.is_empty() {
+                continue;
+            }
+            if executed.iter().all(|t| t.status == TestStatus::Pass) {
                 max_level = lvl;
-            } else if any_at_level {
+            } else {
                 break;
             }
         }
         max_level
     }
-}
 
-impl ServiceReport {
-    /// Weighted score in [0.0, 1.0] based on test weights.
-    /// 1.0 means all weighted tests for this service passed.
+    /// Weighted score in [0.0, 1.0]. Skips and `weight <= 0` are omitted.
     pub fn weighted_score(&self) -> f32 {
         let mut total_weight = 0.0_f32;
         let mut passed_weight = 0.0_f32;
         for t in &self.tests {
-            let w = if t.weight <= 0.0 { 1.0 } else { t.weight };
-            total_weight += w;
-            if t.passed {
-                passed_weight += w;
+            if t.status == TestStatus::Skip || t.weight <= 0.0 {
+                continue;
+            }
+            total_weight += t.weight;
+            if t.status == TestStatus::Pass {
+                passed_weight += t.weight;
             }
         }
         if total_weight == 0.0 {
@@ -259,12 +341,13 @@ pub struct OverallReport {
 impl OverallReport {
     /// Sort services into canonical order (WES, TES, DRS, …) for deterministic table/JSON output.
     pub fn sort_services_canonical(&mut self) {
-        self.services.sort_by_key(|s| service_order(&s.service));
+        self.services.sort_by_key(|s| s.service.canonical_order());
     }
 
     pub fn overall_level(&self) -> ComplianceLevel {
         self.services
             .iter()
+            .filter(|s| s.tests.iter().any(|t| t.is_executed()))
             .map(|s| s.achieved_level())
             .min()
             .unwrap_or(ComplianceLevel::Level0)
@@ -274,7 +357,7 @@ impl OverallReport {
         self.services
             .iter()
             .flat_map(|s| &s.tests)
-            .any(|t| !t.passed)
+            .any(|t| t.status == TestStatus::Fail)
     }
 
     pub fn to_table(&self) -> String {
@@ -309,23 +392,33 @@ impl OverallReport {
         out.push_str("Service   Level   Details\n");
         out.push_str("=======   =====   =======\n");
         let mut services: Vec<_> = self.services.iter().collect();
-        services.sort_by_key(|s| service_order(&s.service));
+        services.sort_by_key(|s| s.service.canonical_order());
         for s in services {
             let lvl = s.achieved_level();
-            let mut failures = s
-                .tests
-                .iter()
-                .filter(|t| !t.passed)
-                .map(|t| format!("{}: {}", t.name, t.error.as_deref().unwrap_or("failed")))
-                .collect::<Vec<_>>();
-            if failures.is_empty() {
-                failures.push("OK".to_string());
+            let mut details = Vec::new();
+            for t in &s.tests {
+                match t.status {
+                    TestStatus::Fail => details.push(format!(
+                        "{}: {}",
+                        t.name,
+                        t.error.as_deref().unwrap_or("failed")
+                    )),
+                    TestStatus::Skip => details.push(format!(
+                        "SKIP {}: {}",
+                        t.name,
+                        t.error.as_deref().unwrap_or("skipped")
+                    )),
+                    TestStatus::Pass => {}
+                }
+            }
+            if details.is_empty() {
+                details.push("OK".to_string());
             }
             out.push_str(&format!(
                 "{:<8} {:<7} {}\n",
                 s.service,
                 lvl.as_int(),
-                failures.join(" | ")
+                details.join(" | ")
             ));
         }
         out
@@ -337,7 +430,7 @@ impl OverallReport {
         let mut total_score = 0.0_f32;
         let mut count = 0_u32;
         let mut services: Vec<_> = self.services.iter().collect();
-        services.sort_by_key(|s| service_order(&s.service));
+        services.sort_by_key(|s| s.service.canonical_order());
 
         for s in services {
             let lvl = s.achieved_level().as_int();
@@ -365,10 +458,7 @@ impl OverallReport {
         }
     }
 
-    /// Return a simple coverage matrix per service and category:
-    /// - Pass: at least one test in the category and all of them passed
-    /// - Fail: at least one test in the category and at least one failed
-    /// - Missing: no tests in the category
+    /// Coverage matrix per service and category (skips count as Missing when they are the only tests).
     pub fn coverage_summary(&self) -> OverallCoverageSummary {
         let all_categories = [
             TestCategory::Schema,
@@ -382,16 +472,19 @@ impl OverallReport {
         ];
 
         let mut sorted: Vec<_> = self.services.iter().collect();
-        sorted.sort_by_key(|s| service_order(&s.service));
+        sorted.sort_by_key(|s| s.service.canonical_order());
         let mut services = Vec::new();
         for s in sorted {
             let mut cats = Vec::new();
             for cat in &all_categories {
-                let tests_in_cat: Vec<&TestCaseResult> =
-                    s.tests.iter().filter(|t| t.category == *cat).collect();
-                let state = if tests_in_cat.is_empty() {
+                let executed: Vec<&TestCaseResult> = s
+                    .tests
+                    .iter()
+                    .filter(|t| t.category == *cat && t.is_executed())
+                    .collect();
+                let state = if executed.is_empty() {
                     CoverageState::Missing
-                } else if tests_in_cat.iter().all(|t| t.passed) {
+                } else if executed.iter().all(|t| t.status == TestStatus::Pass) {
                     CoverageState::Pass
                 } else {
                     CoverageState::Fail
@@ -412,6 +505,19 @@ impl OverallReport {
 mod tests {
     use super::*;
 
+    fn case(
+        name: &str,
+        level: ComplianceLevel,
+        status: TestStatus,
+        category: TestCategory,
+    ) -> TestCaseResult {
+        match status {
+            TestStatus::Pass => TestCaseResult::pass(name, level, category),
+            TestStatus::Fail => TestCaseResult::fail(name, level, category, "failed"),
+            TestStatus::Skip => TestCaseResult::skip(name, level, category, "not configured"),
+        }
+    }
+
     #[test]
     fn table_includes_subset_metadata_sections() {
         let report = OverallReport {
@@ -428,5 +534,148 @@ mod tests {
         assert!(table.contains("Enabled services:"));
         assert!(table.contains("Skipped services:"));
         assert!(table.contains("Executed modules:"));
+    }
+
+    #[test]
+    fn skip_does_not_count_as_pass_or_fail() {
+        let report = ServiceReport {
+            service: ServiceKind::Beacon,
+            tests: vec![
+                case(
+                    "L0",
+                    ComplianceLevel::Level0,
+                    TestStatus::Pass,
+                    TestCategory::Other,
+                ),
+                case(
+                    "L2 skipped",
+                    ComplianceLevel::Level2,
+                    TestStatus::Skip,
+                    TestCategory::Interoperability,
+                ),
+            ],
+        };
+        assert_eq!(report.achieved_level(), ComplianceLevel::Level0);
+        assert!((report.weighted_score() - 1.0).abs() < f32::EPSILON);
+        let overall = OverallReport {
+            services: vec![report],
+            enabled_services: vec![],
+            skipped_services: vec![],
+            executed_test_modules: vec![],
+            diagnostics: None,
+        };
+        assert!(!overall.has_failures());
+        assert!(overall.to_table().contains("SKIP"));
+        assert!(!overall.to_table().contains("L2 skipped: failed"));
+    }
+
+    #[test]
+    fn skip_weight_zero_is_omitted_from_score() {
+        let report = ServiceReport {
+            service: ServiceKind::Drs,
+            tests: vec![
+                TestCaseResult::pass("checksum", ComplianceLevel::Level2, TestCategory::Checksum),
+                TestCaseResult::skip(
+                    "optional",
+                    ComplianceLevel::Level2,
+                    TestCategory::Checksum,
+                    "feature off",
+                ),
+            ],
+        };
+        assert!((report.weighted_score() - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn fail_at_level_stops_climb() {
+        let report = ServiceReport {
+            service: ServiceKind::Wes,
+            tests: vec![
+                case(
+                    "L0",
+                    ComplianceLevel::Level0,
+                    TestStatus::Pass,
+                    TestCategory::Other,
+                ),
+                case(
+                    "L1",
+                    ComplianceLevel::Level1,
+                    TestStatus::Pass,
+                    TestCategory::Schema,
+                ),
+                case(
+                    "L2",
+                    ComplianceLevel::Level2,
+                    TestStatus::Fail,
+                    TestCategory::Lifecycle,
+                ),
+            ],
+        };
+        assert_eq!(report.achieved_level(), ComplianceLevel::Level1);
+        assert!(OverallReport {
+            services: vec![report],
+            enabled_services: vec![],
+            skipped_services: vec![],
+            executed_test_modules: vec![],
+            diagnostics: None,
+        }
+        .has_failures());
+    }
+
+    #[test]
+    fn skip_only_service_does_not_pin_overall_level() {
+        let skipped = ServiceReport {
+            service: ServiceKind::Htsget,
+            tests: vec![TestCaseResult::skip(
+                "htsget suite",
+                ComplianceLevel::Level0,
+                TestCategory::Other,
+                "no URL",
+            )],
+        };
+        let wes = ServiceReport {
+            service: ServiceKind::Wes,
+            tests: vec![case(
+                "L2",
+                ComplianceLevel::Level2,
+                TestStatus::Pass,
+                TestCategory::Lifecycle,
+            )],
+        };
+        let overall = OverallReport {
+            services: vec![skipped, wes],
+            enabled_services: vec![],
+            skipped_services: vec![],
+            executed_test_modules: vec![],
+            diagnostics: None,
+        };
+        assert_eq!(overall.overall_level(), ComplianceLevel::Level2);
+    }
+
+    #[test]
+    fn coverage_treats_skip_only_category_as_missing() {
+        let report = ServiceReport {
+            service: ServiceKind::Beacon,
+            tests: vec![TestCaseResult::skip(
+                "v2",
+                ComplianceLevel::Level2,
+                TestCategory::Interoperability,
+                "disabled",
+            )],
+        };
+        let overall = OverallReport {
+            services: vec![report],
+            enabled_services: vec![],
+            skipped_services: vec![],
+            executed_test_modules: vec![],
+            diagnostics: None,
+        };
+        let cov = overall.coverage_summary();
+        let interop = cov.services[0]
+            .categories
+            .iter()
+            .find(|(c, _)| *c == TestCategory::Interoperability)
+            .unwrap();
+        assert_eq!(interop.1, CoverageState::Missing);
     }
 }

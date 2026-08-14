@@ -8,7 +8,7 @@ Scope boundary: HelixTest remains **GA4GH-focused**. MII/KDS checks live in Ferr
 
 ### Quick start
 
-**Prerequisites:** [Rust](https://rustup.rs) 1.75+
+**Prerequisites:** [Rust](https://rustup.rs) 1.75+ (MSRV encoded as `rust-version` in the workspace)
 
 ```bash
 git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest
@@ -34,19 +34,19 @@ helixtest --all --mode ferrum+infra --profile ferrum-infra
 |---------|---------|
 | `helixtest --all --mode ferrum` | Full suite against Ferrum demo stack |
 | `helixtest --all --mode ferrum+infra --profile ferrum-infra` | Co-deploy broker + Passport-on-DRS |
-| `helixtest --service wes --mode ferrum` | Single service |
+| `helixtest --all --only wes --mode ferrum` | Single service |
 | `helixtest --help` | All flags, report formats, fail levels |
 
-Full usage, architecture, and CI integration: **[helixtest/README.md](helixtest/README.md)**.
+Full usage, architecture, and CI integration: **[helixtest/README.md](helixtest/README.md)**. Known limitations: **[helixtest/docs/known-limitations.md](helixtest/docs/known-limitations.md)**.
 
 ### Test areas
 
 - **API contract tests** for WES, TES, DRS, TRS, Beacon v2
 - **Workflow execution tests** for CWL, WDL, Nextflow via WES
 - **Cross-service E2E tests** spanning TRS → DRS → WES → TES → Beacon
-- **Authorization tests** for GA4GH Passports / OIDC-style flows
+- **Authorization tests**: default suite uses an **HMAC-SHA256 JWT fixture** (shared secret). **GA4GH Passports / OIDC** are exercised in `--mode ferrum+infra`
 - **Co-deploy tests** via `--mode ferrum+infra` and profile `ferrum-infra`
-- **Cryptographic tests** for Crypt4GH-style encryption
+- **Cryptographic tests**: local checks use **age** (not Crypt4GH containers). Optional Ferrum HTTP **Crypt4GH** rewrap/decrypt_plain is env-gated. Compose files live under `helixtest/docker/`
 
 For Ferrum-specific guidance: [helixtest/docs/ferrum.md](helixtest/docs/ferrum.md). **CI vs full stack:** noop TES in CI; Docker TES documented in [helixtest/docs/adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md](helixtest/docs/adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md).
 

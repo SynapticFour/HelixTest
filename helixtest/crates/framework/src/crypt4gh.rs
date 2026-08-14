@@ -54,12 +54,12 @@ async fn level5_roundtrip_checksum() -> TestCaseResult {
         let dec = NamedTempFile::new()?;
         let dec_path = dec.path().to_path_buf();
 
-        let pass = "crypt4gh-test-pass";
+        let pass = "age-test-pass";
         let _enc_checksum = encrypt_file(&input_path, &enc_path, pass)?;
         let dec_checksum = decrypt_file(&enc_path, &dec_path, pass)?;
         if dec_checksum != input_checksum {
             anyhow::bail!(
-                "Crypt4GH roundtrip checksum mismatch: expected {}, got {}",
+                "age roundtrip checksum mismatch: expected {}, got {}",
                 input_checksum,
                 dec_checksum
             );
@@ -67,14 +67,12 @@ async fn level5_roundtrip_checksum() -> TestCaseResult {
         Ok(())
     })();
 
-    TestCaseResult {
-        name: "Crypt4GH roundtrip checksum".into(),
-        level: ComplianceLevel::Level5,
-        passed: res.is_ok(),
-        error: res.err().map(|e| e.to_string()),
-        category: TestCategory::Checksum,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Local age: roundtrip checksum",
+        ComplianceLevel::Level5,
+        TestCategory::Checksum,
+        res,
+    )
 }
 
 async fn level5_partial_read() -> TestCaseResult {
@@ -85,23 +83,21 @@ async fn level5_partial_read() -> TestCaseResult {
         let enc = NamedTempFile::new()?;
         let enc_path = enc.path().to_path_buf();
 
-        let pass = "crypt4gh-test-pass";
+        let pass = "age-test-pass";
         let _enc_checksum = encrypt_file(&input_path, &enc_path, pass)?;
         let partial = decrypt_partial(&enc_path, pass, 16)?;
         if partial.is_empty() {
-            anyhow::bail!("Crypt4GH partial decrypt returned no data");
+            anyhow::bail!("age partial decrypt returned no data");
         }
         Ok(())
     })();
 
-    TestCaseResult {
-        name: "Crypt4GH partial read".into(),
-        level: ComplianceLevel::Level5,
-        passed: res.is_ok(),
-        error: res.err().map(|e| e.to_string()),
-        category: TestCategory::Checksum,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Local age: partial read",
+        ComplianceLevel::Level5,
+        TestCategory::Checksum,
+        res,
+    )
 }
 
 async fn level5_corrupted_header_fails() -> TestCaseResult {
@@ -113,7 +109,7 @@ async fn level5_corrupted_header_fails() -> TestCaseResult {
         let enc_path = enc.path().to_path_buf();
         let dec = NamedTempFile::new()?;
         let dec_path = dec.path().to_path_buf();
-        let pass = "crypt4gh-test-pass";
+        let pass = "age-test-pass";
         let _enc_checksum = encrypt_file(&input_path, &enc_path, pass)?;
 
         let mut data = std::fs::read(&enc_path)?;
@@ -133,14 +129,12 @@ async fn level5_corrupted_header_fails() -> TestCaseResult {
         Ok(())
     })();
 
-    TestCaseResult {
-        name: "Crypt4GH corrupted header fails".into(),
-        level: ComplianceLevel::Level5,
-        passed: res.is_ok(),
-        error: res.err().map(|e| e.to_string()),
-        category: TestCategory::Security,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Local age: corrupted header fails",
+        ComplianceLevel::Level5,
+        TestCategory::Security,
+        res,
+    )
 }
 
 async fn level5_wrong_key_fails() -> TestCaseResult {
@@ -153,8 +147,8 @@ async fn level5_wrong_key_fails() -> TestCaseResult {
         let dec = NamedTempFile::new()?;
         let dec_path = dec.path().to_path_buf();
 
-        let pass_ok = "crypt4gh-test-pass";
-        let pass_wrong = "crypt4gh-wrong-pass";
+        let pass_ok = "age-test-pass";
+        let pass_wrong = "age-wrong-pass";
 
         let _enc_checksum = encrypt_file(&input_path, &enc_path, pass_ok)?;
         let res = decrypt_file(&enc_path, &dec_path, pass_wrong);
@@ -164,14 +158,12 @@ async fn level5_wrong_key_fails() -> TestCaseResult {
         Ok(())
     })();
 
-    TestCaseResult {
-        name: "Crypt4GH wrong key fails".into(),
-        level: ComplianceLevel::Level5,
-        passed: res.is_ok(),
-        error: res.err().map(|e| e.to_string()),
-        category: TestCategory::Security,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Local age: wrong passphrase fails",
+        ComplianceLevel::Level5,
+        TestCategory::Security,
+        res,
+    )
 }
 
 async fn level5_corrupted_ciphertext_fails() -> TestCaseResult {
@@ -183,7 +175,7 @@ async fn level5_corrupted_ciphertext_fails() -> TestCaseResult {
         let enc_path = enc.path().to_path_buf();
         let dec = NamedTempFile::new()?;
         let dec_path = dec.path().to_path_buf();
-        let pass = "crypt4gh-test-pass";
+        let pass = "age-test-pass";
         let _enc_checksum = encrypt_file(&input_path, &enc_path, pass)?;
 
         corrupt_file(&enc_path)?;
@@ -194,14 +186,12 @@ async fn level5_corrupted_ciphertext_fails() -> TestCaseResult {
         Ok(())
     })();
 
-    TestCaseResult {
-        name: "Crypt4GH corrupted ciphertext fails".into(),
-        level: ComplianceLevel::Level5,
-        passed: res.is_ok(),
-        error: res.err().map(|e| e.to_string()),
-        category: TestCategory::Robustness,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Local age: corrupted ciphertext fails",
+        ComplianceLevel::Level5,
+        TestCategory::Robustness,
+        res,
+    )
 }
 
 /// Truncated Crypt4GH stream (e.g. interrupted download) must not yield a successful full decrypt.
@@ -214,7 +204,7 @@ async fn level5_truncated_ciphertext_fails() -> TestCaseResult {
         let enc_path = enc.path().to_path_buf();
         let dec = NamedTempFile::new()?;
         let dec_path = dec.path().to_path_buf();
-        let pass = "crypt4gh-test-pass";
+        let pass = "age-test-pass";
         let _enc_checksum = encrypt_file(&input_path, &enc_path, pass)?;
 
         let mut data = std::fs::read(&enc_path)?;
@@ -232,12 +222,10 @@ async fn level5_truncated_ciphertext_fails() -> TestCaseResult {
         Ok(())
     })();
 
-    TestCaseResult {
-        name: "Crypt4GH truncated ciphertext stream fails".into(),
-        level: ComplianceLevel::Level5,
-        passed: res.is_ok(),
-        error: res.err().map(|e| e.to_string()),
-        category: TestCategory::Robustness,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "Local age: truncated ciphertext stream fails",
+        ComplianceLevel::Level5,
+        TestCategory::Robustness,
+        res,
+    )
 }

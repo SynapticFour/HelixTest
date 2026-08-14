@@ -1,11 +1,13 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use common::logging::init_logging;
+use common::config::TestConfig;
+use common::http::HttpClient;
+use common::logging::init_logging_verbose;
 use common::report::{report_diagnostics_requested, ReportDiagnostics, ServiceKind};
 use framework::{run_all, Mode as FrameworkMode};
 use std::collections::HashSet;
+use std::path::Path;
 use std::process::Command;
-use std::thread::sleep;
 use std::time::{Duration, Instant};
 use tracing::info;
 
@@ -77,7 +79,7 @@ impl ServiceArg {
     }
 }
 
-const BANNER: &str = "🧬 HelixTest — GA4GH Conformance Suite";
+const BANNER: &str = "HelixTest — GA4GH Conformance Suite";
 const CREDIT: &str = "Synaptic Four · Apache-2.0";
 
 #[derive(Parser, Debug)]
@@ -96,9 +98,13 @@ struct Args {
     #[arg(long, value_enum, default_value_t = Mode::Generic)]
     mode: Mode,
 
-    /// Optionally start Ferrum via docker-compose before running tests
+    /// Optionally start a compose stack before running tests (uses CWD or --compose-file)
     #[arg(long)]
     start_ferrum: bool,
+
+    /// docker compose file for --start-ferrum
+    #[arg(long)]
+    compose_file: Option<String>,
 
     /// Profile name from `helixtest/profiles/<name>.toml`
     #[arg(long)]
@@ -120,51 +126,77 @@ struct Args {
     #[arg(long, value_enum, default_value_t = AfricaProfileArg::All)]
     africa_profile: AfricaProfileArg,
 
-    /// Enable verbose logging (sets RUST_LOG=debug if not already set)
+    /// Enable verbose logging (sets debug if RUST_LOG is not already set)
     #[arg(long)]
     verbose: bool,
+}
+
+fn resolve_profile(args: &Args) -> Option<String> {
+    if let Some(p) = &args.profile {
+        return Some(p.clone());
+    }
+    match args.mode {
+        Mode::FerrumAfrica => Some("ferrum-africa".into()),
+        Mode::FerrumInfra => Some("ferrum-infra".into()),
+        _ => None,
+    }
+}
+
+async fn wait_for_wes(client: &HttpClient, wes_url: &str) -> Result<()> {
+    let url = format!("{}/service-info", wes_url.trim_end_matches('/'));
+    let deadline = Instant::now() + Duration::from_secs(60);
+    loop {
+        if client.get_json(&url).await.is_ok() {
+            info!(%url, "WES service-info reachable");
+            return Ok(());
+        }
+        if Instant::now() > deadline {
+            anyhow::bail!("WES not healthy at {url} after 60s");
+        }
+        tokio::time::sleep(Duration::from_secs(2)).await;
+    }
+}
+
+fn start_compose(compose_file: Option<&str>) -> Result<()> {
+    let mut cmd = Command::new("docker");
+    cmd.arg("compose");
+    if let Some(f) = compose_file {
+        cmd.arg("-f").arg(f);
+    } else {
+        let nested = Path::new("helixtest/docker/docker-compose.yml");
+        if nested.exists() {
+            cmd.arg("-f").arg(nested);
+        }
+    }
+    let status = cmd.arg("up").arg("-d").status()?;
+    if !status.success() {
+        anyhow::bail!(
+            "HelixTest: Failed to start compose. Pass --compose-file or run compose from the target stack repo."
+        );
+    }
+    Ok(())
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
+    init_logging_verbose(args.verbose);
 
-    // Configure logging verbosity before initializing tracing.
-    if args.verbose && std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "debug,helixtest=debug");
-    }
-    if let Some(profile) = &args.profile {
-        std::env::set_var("HELIXTEST_PROFILE", profile);
-    }
-    if matches!(args.mode, Mode::FerrumAfrica) {
-        std::env::set_var("HELIXTEST_AFRICA_PROFILE", "ferrum-africa");
-    }
-    if matches!(args.mode, Mode::FerrumInfra) {
-        std::env::set_var("HELIXTEST_PROFILE", "ferrum-infra");
-    }
-    init_logging();
+    let profile = resolve_profile(&args);
+
     if args.all {
         println!("{}", BANNER);
         println!("{}\n", CREDIT);
+
+        let cfg = TestConfig::load(profile.as_deref())?;
+        let client = HttpClient::new();
+
         if args.start_ferrum {
-            info!(
-                action = "start_ferrum",
-                "Starting Ferrum via docker compose"
-            );
-            let status = Command::new("docker")
-                .arg("compose")
-                .arg("up")
-                .arg("-d")
-                .status()?;
-            if !status.success() {
-                anyhow::bail!(
-                    "HelixTest: Failed to start Ferrum. Run `docker compose up -d` from the docker/ directory and check that Docker is running."
-                );
-            }
-            // Simple wait loop to give services time to become healthy.
-            let wait_secs = 10;
-            info!(wait_secs, "Waiting for Ferrum services to become healthy");
-            sleep(Duration::from_secs(wait_secs));
+            info!(action = "start_ferrum", "Starting stack via docker compose");
+            start_compose(args.compose_file.as_deref())?;
+            wait_for_wes(&client, &cfg.services.wes_url)
+                .await
+                .context("Waiting for WES after --start-ferrum")?;
         }
 
         let framework_mode = match args.mode {
@@ -174,14 +206,14 @@ async fn main() -> Result<()> {
             Mode::FerrumInfra => FrameworkMode::FerrumInfra,
         };
 
-        info!(mode = ?args.mode, "Running HelixTest conformance suite");
+        info!(mode = ?args.mode, profile = ?profile, "Running HelixTest conformance suite");
         let run_started = Instant::now();
         let mut report = if matches!(args.mode, Mode::FerrumAfrica) {
-            framework::africa::run_africa(args.africa_profile.to_profile())
+            framework::africa::run_africa(args.africa_profile.to_profile(), profile.as_deref())
                 .await
                 .context("HelixTest Africa mode run failed (check config and service URLs)")?
         } else if matches!(args.mode, Mode::FerrumInfra) {
-            framework::infra::run_infra()
+            framework::infra::run_infra(profile.as_deref())
                 .await
                 .context("HelixTest ferrum+infra mode run failed (check co-deploy stack URLs)")?
         } else {
@@ -195,7 +227,7 @@ async fn main() -> Result<()> {
                         .collect::<HashSet<_>>(),
                 )
             };
-            run_all(framework_mode, only)
+            run_all(framework_mode, only, profile.clone())
                 .await
                 .context("HelixTest conformance run failed (check config and service URLs)")?
         };
@@ -208,7 +240,6 @@ async fn main() -> Result<()> {
                 ),
             });
         }
-        // Deterministic output: same order every time (table and JSON).
         report.sort_services_canonical();
 
         match args.report {
@@ -231,9 +262,6 @@ async fn main() -> Result<()> {
             }
         }
 
-        // Exit status logic:
-        // - If any test failed, exit 1.
-        // - Additionally, if --fail-level is set and overall level is below it, exit 1.
         let mut exit_code = 0;
         if report.has_failures() {
             exit_code = 1;

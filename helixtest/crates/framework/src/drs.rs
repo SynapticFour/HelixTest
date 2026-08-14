@@ -2,10 +2,14 @@ use anyhow::Result;
 use common::config::TestConfig;
 use common::http::HttpClient;
 use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCaseResult, TestCategory};
+use common::util::sha256_bytes;
+use futures::StreamExt;
 use serde_json::Value;
 use tracing::info;
 
-use crate::{Features, Mode};
+use crate::{level0_http, Features, Mode};
+
+const RANGE_BODY_LIMIT: usize = 2048;
 
 pub async fn run_drs_checks(
     _mode: Mode,
@@ -33,26 +37,10 @@ async fn level0_reachable(cfg: &TestConfig, client: &HttpClient) -> TestCaseResu
         cfg.services.drs_url.trim_end_matches('/'),
         "test-object-1"
     );
-    let res = client.inner().get(&url).send().await;
-    match res {
-        Ok(resp) => TestCaseResult {
-            name: "DRS object endpoint reachable".into(),
-            level: ComplianceLevel::Level0,
-            passed: resp.status().is_success() || resp.status().is_client_error(),
-            error: (!resp.status().is_success() && !resp.status().is_client_error())
-                .then(|| format!("Unexpected HTTP status: {}", resp.status())),
-            category: TestCategory::Other,
-            weight: 1.0,
-        },
-        Err(e) => TestCaseResult {
-            name: "DRS object endpoint reachable".into(),
-            level: ComplianceLevel::Level0,
-            passed: false,
-            error: Some(e.to_string()),
-            category: TestCategory::Other,
-            weight: 1.0,
-        },
-    }
+    level0_http(
+        "DRS object endpoint reachable",
+        client.inner().get(&url).send().await,
+    )
 }
 
 async fn level1_basic_schema_and_fields(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -61,16 +49,16 @@ async fn level1_basic_schema_and_fields(cfg: &TestConfig, client: &HttpClient) -
         cfg.services.drs_url.trim_end_matches('/'),
         "test-object-1"
     );
-    let res = client.get_json(&url).await;
-    let result = res.and_then(|v| validate_basic_drs_object("test-object-1", &v));
-    TestCaseResult {
-        name: "DRS basic fields and access_methods".into(),
-        level: ComplianceLevel::Level1,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Schema,
-        weight: 1.0,
-    }
+    let res = client
+        .get_json(&url)
+        .await
+        .and_then(|v| validate_basic_drs_object("test-object-1", &v));
+    TestCaseResult::from_outcome(
+        "DRS basic fields and access_methods",
+        ComplianceLevel::Level1,
+        TestCategory::Schema,
+        res,
+    )
 }
 
 fn validate_basic_drs_object(expected_id: &str, v: &Value) -> Result<()> {
@@ -100,23 +88,31 @@ fn validate_basic_drs_object(expected_id: &str, v: &Value) -> Result<()> {
     Ok(())
 }
 
+fn first_access_url(v: &Value) -> Result<&str> {
+    let access_methods = v
+        .get("access_methods")
+        .and_then(|x| x.as_array())
+        .ok_or_else(|| anyhow::anyhow!("DRS object missing access_methods array: {}", v))?;
+    access_methods
+        .first()
+        .and_then(|first| first.get("access_url"))
+        .and_then(|a| a.get("url"))
+        .and_then(|x| x.as_str())
+        .ok_or_else(|| anyhow::anyhow!("access_methods[0].access_url.url missing: {}", v))
+}
+
 async fn level2_checksum_correctness(
     features: &Features,
     cfg: &TestConfig,
     client: &HttpClient,
 ) -> TestCaseResult {
     if !features.strict_drs_checksums {
-        return TestCaseResult {
-            name: "DRS checksum correctness".into(),
-            level: ComplianceLevel::Level2,
-            passed: true,
-            error: Some(
-                "DRS strict checksum check disabled (strict_drs_checksums=false in features)"
-                    .into(),
-            ),
-            category: TestCategory::Checksum,
-            weight: 1.0,
-        };
+        return TestCaseResult::skip(
+            "DRS checksum correctness",
+            ComplianceLevel::Level2,
+            TestCategory::Checksum,
+            "strict_drs_checksums=false in features",
+        );
     }
 
     let url = format!(
@@ -144,18 +140,7 @@ async fn level2_checksum_correctness(
             .and_then(|x| x.as_str())
             .ok_or_else(|| anyhow::anyhow!("sha256 checksum entry missing checksum field"))?;
 
-        // Download the object bytes via access_url and compute checksum from HTTP response
-        let access_methods = v
-            .get("access_methods")
-            .and_then(|x| x.as_array())
-            .ok_or_else(|| anyhow::anyhow!("DRS object missing access_methods array: {}", v))?;
-        let first = &access_methods[0];
-        let access_url = first
-            .get("access_url")
-            .and_then(|a| a.get("url"))
-            .and_then(|x| x.as_str())
-            .ok_or_else(|| anyhow::anyhow!("access_methods[0].access_url.url missing: {}", v))?;
-
+        let access_url = first_access_url(&v)?;
         let resp = client.inner().get(access_url).send().await?;
         if !resp.status().is_success() {
             anyhow::bail!(
@@ -164,11 +149,7 @@ async fn level2_checksum_correctness(
             );
         }
         let bytes = resp.bytes().await?;
-
-        let mut hasher = sha2::Sha256::new();
-        use sha2::Digest;
-        hasher.update(&bytes);
-        let actual = format!("{:x}", hasher.finalize());
+        let actual = sha256_bytes(&bytes);
         info!(expected = %expected_checksum, actual = %actual, "DRS checksum comparison from HTTP download");
         if !actual.eq_ignore_ascii_case(expected_checksum) {
             anyhow::bail!(
@@ -181,14 +162,57 @@ async fn level2_checksum_correctness(
     }
     .await;
 
-    TestCaseResult {
-        name: "DRS checksum correctness".into(),
-        level: ComplianceLevel::Level2,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Checksum,
-        weight: 1.0,
+    TestCaseResult::from_outcome(
+        "DRS checksum correctness",
+        ComplianceLevel::Level2,
+        TestCategory::Checksum,
+        result,
+    )
+}
+
+async fn read_body_capped(resp: reqwest::Response, limit: usize) -> Result<Vec<u8>> {
+    let mut stream = resp.bytes_stream();
+    let mut body = Vec::with_capacity(limit.min(1024));
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        let room = limit.saturating_add(1).saturating_sub(body.len());
+        if chunk.len() > room {
+            anyhow::bail!(
+                "Range request returned unexpectedly large body (over {} bytes)",
+                limit
+            );
+        }
+        body.extend_from_slice(&chunk);
+        if body.len() > limit {
+            anyhow::bail!(
+                "Range request returned unexpectedly large body: {} bytes",
+                body.len()
+            );
+        }
     }
+    Ok(body)
+}
+
+fn parse_content_range(content_range: &str) -> Result<(u64, u64)> {
+    let (unit, rest) = content_range
+        .split_once(char::is_whitespace)
+        .ok_or_else(|| anyhow::anyhow!("Invalid Content-Range format: {}", content_range))?;
+    if unit != "bytes" {
+        anyhow::bail!("Invalid Content-Range format: {}", content_range);
+    }
+    let (range, _total) = rest
+        .split_once('/')
+        .ok_or_else(|| anyhow::anyhow!("Invalid Content-Range range/total: {}", content_range))?;
+    let (start_s, end_s) = range
+        .split_once('-')
+        .ok_or_else(|| anyhow::anyhow!("Invalid Content-Range bounds: {}", content_range))?;
+    let start: u64 = start_s
+        .parse()
+        .map_err(|_| anyhow::anyhow!("Invalid start in Content-Range: {}", content_range))?;
+    let end: u64 = end_s
+        .parse()
+        .map_err(|_| anyhow::anyhow!("Invalid end in Content-Range: {}", content_range))?;
+    Ok((start, end))
 }
 
 async fn level2_range_request(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -199,20 +223,11 @@ async fn level2_range_request(cfg: &TestConfig, client: &HttpClient) -> TestCase
     );
     let result = async {
         let v = client.get_json(&url).await?;
-        let access_methods = v
-            .get("access_methods")
-            .and_then(|x| x.as_array())
-            .ok_or_else(|| anyhow::anyhow!("DRS object missing access_methods array: {}", v))?;
-        let first = &access_methods[0];
-        let url = first
-            .get("access_url")
-            .and_then(|a| a.get("url"))
-            .and_then(|x| x.as_str())
-            .ok_or_else(|| anyhow::anyhow!("access_methods[0].access_url.url missing: {}", v))?;
+        let access_url = first_access_url(&v)?;
 
         let resp = client
             .inner()
-            .get(url)
+            .get(access_url)
             .header("Range", "bytes=0-1023")
             .send()
             .await?;
@@ -222,33 +237,13 @@ async fn level2_range_request(cfg: &TestConfig, client: &HttpClient) -> TestCase
                 resp.status()
             );
         }
-        // Validate Content-Range header
-        let headers = resp.headers().clone();
-        let content_range = headers
+        let content_range = resp
+            .headers()
             .get("Content-Range")
             .and_then(|v| v.to_str().ok())
-            .ok_or_else(|| anyhow::anyhow!("Missing Content-Range header on 206 response"))?;
-        // Expected pattern: "bytes START-END/TOTAL"
-        let parts: Vec<&str> = content_range.split_whitespace().collect();
-        if parts.len() != 2 || parts[0] != "bytes" {
-            anyhow::bail!("Invalid Content-Range format: {}", content_range);
-        }
-        let range_part = parts[1];
-        let range_and_total: Vec<&str> = range_part.split('/').collect();
-        if range_and_total.len() != 2 {
-            anyhow::bail!("Invalid Content-Range range/total: {}", content_range);
-        }
-        let range = range_and_total[0];
-        let range_bounds: Vec<&str> = range.split('-').collect();
-        if range_bounds.len() != 2 {
-            anyhow::bail!("Invalid Content-Range bounds: {}", content_range);
-        }
-        let start: u64 = range_bounds[0]
-            .parse()
-            .map_err(|_| anyhow::anyhow!("Invalid start in Content-Range: {}", content_range))?;
-        let end: u64 = range_bounds[1]
-            .parse()
-            .map_err(|_| anyhow::anyhow!("Invalid end in Content-Range: {}", content_range))?;
+            .ok_or_else(|| anyhow::anyhow!("Missing Content-Range header on 206 response"))?
+            .to_string();
+        let (start, end) = parse_content_range(&content_range)?;
         if start != 0 {
             anyhow::bail!(
                 "Content-Range start must be 0 for request bytes=0-1023, got {} in {}",
@@ -264,30 +259,21 @@ async fn level2_range_request(cfg: &TestConfig, client: &HttpClient) -> TestCase
             );
         }
 
-        let bytes = resp.bytes().await?;
-        let body: Vec<u8> = bytes.iter().take(2049).cloned().collect();
+        let body = read_body_capped(resp, RANGE_BODY_LIMIT).await?;
         if body.is_empty() {
             anyhow::bail!("Range request returned empty body");
-        }
-        if body.len() > 2048 {
-            anyhow::bail!(
-                "Range request returned unexpectedly large body: {} bytes",
-                body.len()
-            );
         }
 
         Ok::<(), anyhow::Error>(())
     }
     .await;
 
-    TestCaseResult {
-        name: "DRS HTTP Range support".into(),
-        level: ComplianceLevel::Level2,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Interoperability,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "DRS HTTP Range support",
+        ComplianceLevel::Level2,
+        TestCategory::Interoperability,
+        result,
+    )
 }
 
 async fn level5_invalid_id_404(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -308,12 +294,10 @@ async fn level5_invalid_id_404(cfg: &TestConfig, client: &HttpClient) -> TestCas
         }
     });
 
-    TestCaseResult {
-        name: "DRS invalid object id returns 404".into(),
-        level: ComplianceLevel::Level5,
-        passed: result.is_ok(),
-        error: result.err().map(|e| e.to_string()),
-        category: TestCategory::Robustness,
-        weight: 1.0,
-    }
+    TestCaseResult::from_outcome(
+        "DRS invalid object id returns 404",
+        ComplianceLevel::Level5,
+        TestCategory::Robustness,
+        result,
+    )
 }

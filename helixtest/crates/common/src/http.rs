@@ -6,6 +6,11 @@ use tokio_retry::strategy::{jitter, ExponentialBackoff};
 use tokio_retry::Retry;
 use tracing::{debug, info, instrument};
 
+const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+const GET_RETRY_ATTEMPTS: usize = 2;
+const BODY_LOG_CHARS: usize = 256;
+
 #[derive(Clone)]
 pub struct HttpClient {
     inner: Client,
@@ -20,12 +25,13 @@ impl Default for HttpClient {
 impl HttpClient {
     pub fn new() -> Self {
         init_logging();
-        Self::with_timeout(Duration::from_secs(60))
+        Self::with_timeout(DEFAULT_REQUEST_TIMEOUT)
     }
 
     /// Build an HTTP client with a custom request timeout (for tests or strict timeouts).
     pub fn with_timeout(timeout: Duration) -> Self {
         let inner = Client::builder()
+            .connect_timeout(DEFAULT_CONNECT_TIMEOUT.min(timeout))
             .timeout(timeout)
             .build()
             .expect("failed to build reqwest client");
@@ -41,14 +47,20 @@ impl HttpClient {
         let resp = self.get_with_retry(url).await?;
         let status = resp.status();
         let text = resp.text().await?;
-        debug!(%url, %status, body = %text, "GET response");
+        debug!(%url, %status, bytes = text.len(), body_prefix = %truncate_for_log(&text), "GET response");
         if !status.is_success() {
-            anyhow::bail!("GET {} failed with HTTP {}: {}", url, status, text);
+            anyhow::bail!(
+                "GET {} failed with HTTP {}: {}",
+                url,
+                status,
+                truncate_for_log(&text)
+            );
         }
         let value: serde_json::Value = serde_json::from_str(&text)?;
         Ok(value)
     }
 
+    /// POST once (not retried). WES/TES create are not idempotent.
     #[instrument(skip(self, body))]
     pub async fn post_json(
         &self,
@@ -56,24 +68,35 @@ impl HttpClient {
         body: &serde_json::Value,
     ) -> Result<serde_json::Value> {
         let body_str = body.to_string();
-        debug!(%url, body = %body_str, "POST request");
-        let strategy = ExponentialBackoff::from_millis(200).map(jitter).take(5);
-        let resp = Retry::start(strategy, || async {
-            let r = self
-                .inner
-                .post(url)
-                .header("Content-Type", "application/json")
-                .body(body_str.clone())
-                .send()
-                .await;
-            r
-        })
-        .await?;
+        debug!(
+            %url,
+            bytes = body_str.len(),
+            body_prefix = %truncate_for_log(&body_str),
+            "POST request"
+        );
+        let resp = self
+            .inner
+            .post(url)
+            .header("Content-Type", "application/json")
+            .body(body_str)
+            .send()
+            .await?;
         let status = resp.status();
         let text = resp.text().await?;
-        debug!(%url, %status, body = %text, "POST response");
+        debug!(
+            %url,
+            %status,
+            bytes = text.len(),
+            body_prefix = %truncate_for_log(&text),
+            "POST response"
+        );
         if !status.is_success() {
-            anyhow::bail!("POST {} failed with HTTP {}: {}", url, status, text);
+            anyhow::bail!(
+                "POST {} failed with HTTP {}: {}",
+                url,
+                status,
+                truncate_for_log(&text)
+            );
         }
         let value: serde_json::Value = serde_json::from_str(&text)?;
         Ok(value)
@@ -82,13 +105,21 @@ impl HttpClient {
     #[instrument(skip(self))]
     async fn get_with_retry(&self, url: &str) -> Result<Response> {
         info!(%url, "GET with retry");
-        let strategy = ExponentialBackoff::from_millis(200).map(jitter).take(5);
-        let resp = Retry::start(strategy, || async {
-            let r = self.inner.get(url).send().await;
-            r
-        })
-        .await?;
+        let strategy = ExponentialBackoff::from_millis(200)
+            .map(jitter)
+            .take(GET_RETRY_ATTEMPTS);
+        let resp = Retry::spawn(strategy, || async { self.inner.get(url).send().await }).await?;
         Ok(resp)
+    }
+}
+
+fn truncate_for_log(s: &str) -> String {
+    let mut it = s.chars();
+    let prefix: String = it.by_ref().take(BODY_LOG_CHARS).collect();
+    if it.next().is_some() {
+        format!("{prefix}…")
+    } else {
+        prefix
     }
 }
 
@@ -167,7 +198,7 @@ mod tests {
     #[tokio::test]
     async fn robustness_retry_after_timeout_succeeds() {
         let server = MockServer::start().await;
-        let responder = DelayedThenOk::new(2, Duration::from_millis(400));
+        let responder = DelayedThenOk::new(1, Duration::from_millis(400));
         Mock::given(method("GET"))
             .respond_with(responder)
             .mount(&server)
@@ -229,5 +260,24 @@ mod tests {
         let body = serde_json::json!({"x": 1});
         let err = client.post_json(&url, &body).await.unwrap_err().to_string();
         assert!(err.contains("HTTP 400"), "unexpected error: {}", err);
+    }
+
+    #[tokio::test]
+    async fn post_json_is_not_retried() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/once"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"ok": true})))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::with_timeout(Duration::from_secs(2));
+        let url = format!("{}/once", server.uri());
+        let v = client
+            .post_json(&url, &serde_json::json!({}))
+            .await
+            .unwrap();
+        assert_eq!(v.get("ok").and_then(|x| x.as_bool()), Some(true));
     }
 }
