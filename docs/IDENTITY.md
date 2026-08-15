@@ -11,6 +11,10 @@ Anyone implementing or buying a GA4GH API — including Ferrum, including compet
 ## Standalone
 
 ```bash
+# No-clone install (Rust 1.88+): see docs/INSTALL.md
+cargo install --git https://github.com/SynapticFour/HelixTest.git \
+  --tag v0.1.1 --locked --bin helixtest
+
 git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest
 make prove
 # Against a stack you started:

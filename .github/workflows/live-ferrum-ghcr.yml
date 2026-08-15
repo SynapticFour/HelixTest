@@ -1,0 +1,79 @@
+# Opt-in: HelixTest against published Ferrum GHCR (edge / SQLite).
+#
+# Does not run on pull requests. This is demo-mode (auth off, FERRUM_OFFLINE=1),
+# labeled honestly — not a hospital auth-on proof. Default image is the tagged
+# edge variant so Beacon/DRS run without Postgres.
+
+name: Live Ferrum GHCR
+
+on:
+  workflow_dispatch:
+    inputs:
+      ferrum_image:
+        description: "Full GHCR image reference"
+        required: true
+        default: "ghcr.io/synapticfour/ferrum:v0.3.0-edge"
+      only:
+        description: "HelixTest --only surface. Empty = --all (edge has no WES)."
+        required: false
+        default: "beacon"
+
+concurrency:
+  group: live-ferrum-ghcr
+  cancel-in-progress: true
+
+jobs:
+  helixtest-published-ferrum:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@1.88.0
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install libsodium
+        run: sudo apt-get update && sudo apt-get install -y libsodium-dev pkg-config
+
+      - name: Build helixtest
+        run: cargo build --locked --release --bin helixtest
+
+      - name: Pull published Ferrum
+        run: docker pull "${{ inputs.ferrum_image }}"
+
+      - name: Start Ferrum edge (SQLite, auth-off demo)
+        run: |
+          docker run -d --name ferrum-live --user 65532:65532 \
+            -p 8080:8080 \
+            -e FERRUM_OFFLINE=1 \
+            -e FERRUM_DEMO=1 \
+            -e FERRUM_AUTH__REQUIRE_AUTH=false \
+            -e FERRUM_DATABASE__SQLITE_PATH=/tmp/ferrum.db \
+            "${{ inputs.ferrum_image }}"
+          for i in $(seq 1 40); do
+            if curl -sf "http://127.0.0.1:8080/health" >/dev/null; then
+              echo "Ferrum is up"
+              exit 0
+            fi
+            sleep 3
+          done
+          docker logs ferrum-live || true
+          echo "Ferrum did not become ready" >&2
+          exit 1
+
+      - name: Run HelixTest (demo-mode / auth-off)
+        env:
+          GATEWAY_BASE: http://127.0.0.1:8080
+          BEACON_URL: http://127.0.0.1:8080/ga4gh/beacon/v2
+          DRS_URL: http://127.0.0.1:8080/ga4gh/drs/v1
+        run: |
+          ONLY="${{ inputs.only }}"
+          ARGS=(--all --mode ferrum --report json --fail-level 2)
+          if [ -n "$ONLY" ]; then
+            ARGS+=(--only "$ONLY")
+          fi
+          ./target/release/helixtest "${ARGS[@]}"

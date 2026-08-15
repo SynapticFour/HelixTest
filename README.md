@@ -8,7 +8,7 @@ Scope boundary: HelixTest remains **GA4GH-focused**. MII/KDS checks live in Ferr
 
 ### Quick start
 
-**Prerequisites:** [Rust](https://rustup.rs) 1.88+ (MSRV encoded as `rust-version` in the workspace)
+**Prerequisites:** [Rust](https://rustup.rs) 1.88+ (MSRV encoded as `rust-version` in the workspace). Binary install without cloning: **[docs/INSTALL.md](docs/INSTALL.md)**.
 
 ```bash
 git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest
