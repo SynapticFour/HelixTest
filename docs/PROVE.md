@@ -1,13 +1,15 @@
 # Prove HelixTest without a running platform
 
-`make prove` is the zero-risk path: workspace unit tests and a release CLI build. No Docker, no Ferrum.
+`make prove` is the zero-risk path: **offline** workspace tests and a release CLI build. No Docker, no Ferrum.
 
 ```bash
 git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest
 make prove
 ```
 
-That is HelixTest as a product: the suite compiles and its own tests pass.
+That is HelixTest as a product: the suite compiles and its own unit tests pass. GitHub Actions on `main` / PRs run the same `make prove` command.
+
+`make test` / `make prove` **exclude** the live-stack crates (`api-tests`, `auth-tests`, `e2e-tests`, `workflow-tests`). Those crates call `framework::run_all` against a running target. Hitting them without a stack is not a customer proof.
 
 ## Live proof (needs a target you control)
 

@@ -11,11 +11,7 @@ echo "ci-check: cargo clippy"
 cargo clippy --workspace --all-targets -- -D warnings
 
 echo "ci-check: tests"
-# Live-stack crates (api/auth/e2e/workflow-tests) need running services; same excludes as CI.
-cargo test --workspace \
-  --exclude api-tests \
-  --exclude auth-tests \
-  --exclude e2e-tests \
-  --exclude workflow-tests
+# Live-stack crates stay excluded; same as `make test` / CI `make prove`.
+make test
 
 echo "ci-check: OK"

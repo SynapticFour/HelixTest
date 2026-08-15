@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `make test` / `make prove` use the same offline crate excludes as CI (`api-tests`, `auth-tests`, `e2e-tests`, `workflow-tests` need a live target).
+- CI `build-and-test` and ARM jobs run `make prove` (same command as a local clone).
+
 ## [0.1.1] - 2026-08-15
 
 HelixTest `v0.1.0` remains on origin for the earlier cut. This tag is what Ferrum CI pins (`VERSIONS.lock` `HELIXTEST_REF=v0.1.1`).

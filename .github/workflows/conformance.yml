@@ -40,12 +40,10 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Build
-        run: cargo build --bin helixtest --release
-
-      # Run tests on x86 (was ARM-only) so PRs get coverage without a second cold ARM compile.
-      - name: Test
-        run: cargo test --workspace --exclude api-tests --exclude auth-tests --exclude e2e-tests --exclude workflow-tests
+      # Same command as a clone + `make prove`: offline tests + release CLI.
+      # Live-stack crates (api/auth/e2e/workflow-tests) stay excluded.
+      - name: Prove (offline)
+        run: make prove
 
   msrv:
     if: github.actor != 'dependabot[bot]'
@@ -70,7 +68,5 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Build helixtest (aarch64 release)
-        run: cargo build --bin helixtest --release
-      - name: Test
-        run: cargo test --workspace --exclude api-tests --exclude auth-tests --exclude e2e-tests --exclude workflow-tests
+      - name: Prove (offline)
+        run: make prove

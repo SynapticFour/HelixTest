@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- CI and `make prove` / `make test` use the same offline crate excludes (live-stack crates need a running target).
+
 ## 0.1.1 (2026-08-15)
 
 Tagged on origin as `v0.1.1` (Ferrum `VERSIONS.lock` pin). Includes Ferrum-mode htsget POST `regions` → HTTP 400 InvalidInput.

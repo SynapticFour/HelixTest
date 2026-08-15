@@ -15,7 +15,7 @@ git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest
 make prove
 ```
 
-Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**.
+Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**. CI on `main` / PRs runs the same `make prove` (offline tests + release CLI; live-stack crates excluded).
 
 **Run against a local Ferrum demo** (start Ferrum first — see [Ferrum README](https://github.com/SynapticFour/Ferrum)):
 
