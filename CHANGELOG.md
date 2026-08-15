@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-15
+
+HelixTest `v0.1.0` remains on origin for the earlier cut. This tag is what Ferrum CI pins (`VERSIONS.lock` `HELIXTEST_REF=v0.1.1`).
+
 ### Added
 
 - `TestStatus` (Pass / Fail / Skip); skips are excluded from levels, scores, and `--fail-level`.
@@ -37,4 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [helixtest/docs/known-limitations.md](helixtest/docs/known-limitations.md) for remaining constraints (serial HTTP, live-stack cargo tests excluded from CI).
 
-### Security
+## [0.1.0] - 2026-08-01
+
+First tagged HelixTest cut on origin (`v0.1.0`). See git history for notes prior to this file’s Keep a Changelog sections.

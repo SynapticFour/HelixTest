@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.1 (2026-08-15)
+
+Tagged on origin as `v0.1.1` (Ferrum `VERSIONS.lock` pin). Includes Ferrum-mode htsget POST `regions` → HTTP 400 InvalidInput.
+
 - Scoring: **Skip** is not a pass. Achieved level requires executed Level 0 (L5-only → 0). Africa and E2E include L0 reachability.
 - htsget POST “no query” is format-only; separate POST tests send `regions` (Ferrum modes expect 400 InvalidInput; generic may accept a whole-file ticket).
 - Separate **Age** service vs env-gated Crypt4GH HTTP; HMAC JWT requires `HELIXTEST_SHARED_SECRET`.
