@@ -12,9 +12,10 @@ Scope boundary: HelixTest remains **GA4GH-focused**. MII/KDS checks live in Ferr
 
 ```bash
 git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest
-cargo build --release -p helixtest-cli
-export PATH="$PWD/target/release:$PATH"
+make prove
 ```
+
+Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**.
 
 **Run against a local Ferrum demo** (start Ferrum first — see [Ferrum README](https://github.com/SynapticFour/Ferrum)):
 
