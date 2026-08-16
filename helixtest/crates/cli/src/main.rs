@@ -192,8 +192,10 @@ async fn main() -> Result<()> {
     let profile = resolve_profile(&args);
 
     if args.all {
-        println!("{}", BANNER);
-        println!("{}\n", CREDIT);
+        if matches!(args.report, ReportFormat::Table) {
+            println!("{}", BANNER);
+            println!("{}\n", CREDIT);
+        }
 
         let cfg = TestConfig::load(profile.as_deref())?;
         let client = HttpClient::new();

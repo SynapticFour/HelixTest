@@ -76,7 +76,12 @@ async fn broker_login(client: &HttpClient) -> anyhow::Result<(String, String)> {
         .replace("mock-idp:9100", "127.0.0.1:9100")
         .replace("mock-idp:9000", "127.0.0.1:9100");
 
-    let auth_redirect = client.inner().get(&auth_url).send().await?;
+    let auth_redirect = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?
+        .get(&auth_url)
+        .send()
+        .await?;
     anyhow::ensure!(
         auth_redirect.status().is_redirection(),
         "mock-idp authorize expected redirect, got {}",
