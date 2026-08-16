@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `make test` / `make prove` use the same offline crate excludes as CI (`api-tests`, `auth-tests`, `e2e-tests`, `workflow-tests` need a live target).
 - CI `build-and-test` and ARM jobs run `make prove` (same command as a local clone).
+- Live Ferrum GHCR default image is `ghcr.io/synapticfour/ferrum:v0.3.1-edge` (schedule uses the same fallback). GitHub Release v0.1.1 ships linux-gnu x86_64/aarch64 and darwin aarch64 binaries.
 
 ## [0.1.1] - 2026-08-15
 

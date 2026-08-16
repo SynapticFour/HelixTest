@@ -15,7 +15,7 @@ on:
       ferrum_image:
         description: "Full GHCR image reference"
         required: true
-        default: "ghcr.io/synapticfour/ferrum:v0.3.0-edge"
+        default: "ghcr.io/synapticfour/ferrum:v0.3.1-edge"
       only:
         description: "HelixTest --only surface. Empty = --all (edge has no WES)."
         required: false
@@ -46,9 +46,13 @@ jobs:
         run: cargo build --locked --release --bin helixtest
 
       - name: Pull published Ferrum
-        run: docker pull "${{ inputs.ferrum_image }}"
+        env:
+          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:v0.3.1-edge' }}
+        run: docker pull "$FERRUM_IMAGE"
 
       - name: Start Ferrum edge (SQLite, auth-off demo)
+        env:
+          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:v0.3.1-edge' }}
         run: |
           docker run -d --name ferrum-live --user 65532:65532 \
             -p 8080:8080 \
@@ -56,7 +60,7 @@ jobs:
             -e FERRUM_DEMO=1 \
             -e FERRUM_AUTH__REQUIRE_AUTH=false \
             -e FERRUM_DATABASE__SQLITE_PATH=/tmp/ferrum.db \
-            "${{ inputs.ferrum_image }}"
+            "$FERRUM_IMAGE"
           for i in $(seq 1 40); do
             if curl -sf "http://127.0.0.1:8080/health" >/dev/null; then
               echo "Ferrum is up"

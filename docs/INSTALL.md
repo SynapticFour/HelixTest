@@ -6,7 +6,7 @@ HelixTest is a **free Apache-2.0 ambassador** CLI (`helixtest`). It is not a ser
 
 ## One binary
 
-Prefer a GitHub Release asset when it exists. Otherwise Cargo (Rust 1.88+; libsodium for the workspace):
+Prefer a GitHub Release asset. Fallback: Cargo (Rust 1.88+; libsodium for the workspace):
 
 ```bash
 # Linux x86_64 (sha256 next to the asset). 404 → cargo install below.
@@ -33,7 +33,7 @@ Point the CLI at a running target (env vars / profile — see [PROVE.md](PROVE.m
 
 ## Public proof against published Ferrum
 
-Opt-in (does not run on every PR): GitHub Actions workflow **Live Ferrum GHCR** (`workflow_dispatch`, plus a weekly schedule) pulls `ghcr.io/synapticfour/ferrum:v0.3.0-edge`, starts it **auth-off / SQLite demo-mode**, and runs HelixTest. That is the public claim that a tagged Ferrum image answers Beacon/DRS HTTP — not a hospital auth-on proof, and not the Demo overlay path.
+Opt-in (does not run on every PR): GitHub Actions workflow **Live Ferrum GHCR** (`workflow_dispatch`, plus a weekly schedule) pulls `ghcr.io/synapticfour/ferrum:v0.3.1-edge`, starts it **auth-off / SQLite demo-mode**, and runs HelixTest. That is the public claim that a tagged Ferrum image answers Beacon/DRS HTTP — not a hospital auth-on proof, and not the Demo overlay path.
 
 **Ferrum + ga4gh-infra (complementary stack):** pin Ferrum **v0.3.1** and **ga4gh-infra-v0.2.3** (same as Ferrum `VERSIONS.lock`), start with Ferrum-GA4GH-Demo `./run --with-infra`, then:
 
