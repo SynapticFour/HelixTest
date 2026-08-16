@@ -35,7 +35,7 @@ Point the CLI at a running target (env vars / profile — see [PROVE.md](PROVE.m
 
 Opt-in (does not run on every PR): GitHub Actions workflow **Live Ferrum GHCR** (`workflow_dispatch`, plus a weekly schedule) pulls `ghcr.io/synapticfour/ferrum:v0.3.0-edge`, starts it **auth-off / SQLite demo-mode**, and runs HelixTest. That is the public claim that a tagged Ferrum image answers Beacon/DRS HTTP — not a hospital auth-on proof, and not the Demo overlay path.
 
-**Ferrum + ga4gh-infra (complementary stack):** pin Ferrum **v0.3.0** and **ga4gh-infra-v0.2.3** (same as Ferrum `VERSIONS.lock`), start with Ferrum-GA4GH-Demo `./run --with-infra` (still needs the v0.3.0 overlay until the next Ferrum tag), then:
+**Ferrum + ga4gh-infra (complementary stack):** pin Ferrum **v0.3.1** and **ga4gh-infra-v0.2.3** (same as Ferrum `VERSIONS.lock`), start with Ferrum-GA4GH-Demo `./run --with-infra`, then:
 
 ```bash
 helixtest --all --mode ferrum+infra --profile ferrum-infra --report table --fail-level 2
