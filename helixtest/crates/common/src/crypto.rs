@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use crate::util::sha256_file;
 use age::secrecy::SecretString;
 use age::{Decryptor, Encryptor};

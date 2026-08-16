@@ -1,0 +1,16 @@
+name: SPDX
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  first-party-rs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check SPDX-License-Identifier on first-party Rust
+        run: python3 scripts/spdx-rs.py . --license Apache-2.0 --check

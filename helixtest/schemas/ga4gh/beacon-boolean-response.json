@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GA4GH Beacon v2 beaconBooleanResponse (bundled)",
+  "description": "Inlined required shape of ga4gh-beacon/beacon-v2 framework/json/responses/beaconBooleanResponse.json (and sections/beaconResponseMeta.json, beaconBooleanResponseSection.json, beaconReceivedRequestSummary.json, common $defs). Converted to JSON Schema draft-07 because HelixTest uses jsonschema 0.17. Source of truth remains the Beacon v2 published schemas; extra properties are allowed so implementations may also emit response.exists.",
+  "type": "object",
+  "required": ["meta", "responseSummary"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "beaconId",
+        "apiVersion",
+        "returnedSchemas",
+        "returnedGranularity",
+        "receivedRequestSummary"
+      ],
+      "properties": {
+        "beaconId": { "type": "string" },
+        "apiVersion": { "type": "string" },
+        "returnedGranularity": {
+          "type": "string",
+          "enum": ["boolean", "count", "record"]
+        },
+        "returnedSchemas": { "type": "array" },
+        "receivedRequestSummary": {
+          "type": "object",
+          "required": [
+            "apiVersion",
+            "requestedSchemas",
+            "pagination",
+            "requestedGranularity"
+          ],
+          "properties": {
+            "apiVersion": { "type": "string" },
+            "requestedSchemas": { "type": "array" },
+            "pagination": { "type": "object" },
+            "requestedGranularity": {
+              "type": "string",
+              "enum": ["boolean", "count", "record"]
+            }
+          }
+        }
+      }
+    },
+    "responseSummary": {
+      "type": "object",
+      "required": ["exists"],
+      "properties": {
+        "exists": { "type": "boolean" }
+      }
+    }
+  }
+}

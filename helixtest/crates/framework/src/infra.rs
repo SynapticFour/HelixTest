@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 //! Ferrum + ga4gh-infra co-deploy checks (opt-in; use `--mode ferrum+infra`).
 
 use common::config::TestConfig;
@@ -41,10 +42,6 @@ fn pass(name: &str, category: TestCategory) -> TestCaseResult {
 
 fn fail(name: &str, category: TestCategory, err: impl std::fmt::Display) -> TestCaseResult {
     TestCaseResult::fail(name, ComplianceLevel::Level2, category, err)
-}
-
-fn skip(name: &str, reason: &str) -> TestCaseResult {
-    TestCaseResult::skip(name, ComplianceLevel::Level1, TestCategory::Other, reason)
 }
 
 async fn broker_login(client: &HttpClient) -> anyhow::Result<(String, String)> {
@@ -133,9 +130,10 @@ pub async fn run_infra(config_profile: Option<&str>) -> anyhow::Result<OverallRe
             TestCategory::Schema,
             "missing id field",
         )),
-        Err(e) => tests.push(skip(
+        Err(e) => tests.push(fail(
             "infra: broker service-info",
-            &format!("ga4gh-infra broker not reachable: {e}"),
+            TestCategory::Schema,
+            format!("ga4gh-infra broker not reachable: {e}"),
         )),
     }
 
@@ -178,9 +176,10 @@ pub async fn run_infra(config_profile: Option<&str>) -> anyhow::Result<OverallRe
             TestCategory::Interoperability,
             format!("expected non-empty registry, got {v}"),
         )),
-        Err(e) => tests.push(skip(
+        Err(e) => tests.push(fail(
             "infra: service registry lists entries",
-            &format!("service registry not reachable: {e}"),
+            TestCategory::Interoperability,
+            format!("service registry not reachable: {e}"),
         )),
     }
 
@@ -215,9 +214,10 @@ pub async fn run_infra(config_profile: Option<&str>) -> anyhow::Result<OverallRe
                 )),
             }
         }
-        Err(e) => tests.push(skip(
+        Err(e) => tests.push(fail(
             "infra: broker login issues Passport",
-            &format!("broker login flow unavailable: {e}"),
+            TestCategory::Security,
+            format!("broker login flow unavailable: {e}"),
         )),
     }
 

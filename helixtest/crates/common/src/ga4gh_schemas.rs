@@ -1,7 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 //! GA4GH official OpenAPI/JSON Schema validation.
 //!
 //! Loads vendored GA4GH OpenAPI specs, resolves `$ref`, and validates API responses
-//! against the official schemas (WES ServiceInfo, TES Task, TRS Tool/ToolVersion, htsget).
+//! against the official schemas (WES ServiceInfo, TES Task, TRS Tool/ToolVersion,
+//! htsget, DRS DrsObject, Beacon v2 boolean response).
 
 use anyhow::{Context, Result};
 use jsonschema::JSONSchema;
@@ -16,6 +18,11 @@ const TES_OPENAPI_YAML: &str = include_str!("../../../schemas/ga4gh/tes-openapi.
 const TRS_OPENAPI_YAML: &str = include_str!("../../../schemas/ga4gh/trs-openapi.yaml");
 /// Vendored htsget OpenAPI 1.3.0 from samtools/hts-specs pub/htsget-openapi.yaml (ServiceInfo inlined for offline resolve).
 const HTSGET_OPENAPI_YAML: &str = include_str!("../../../schemas/ga4gh/htsget-openapi.yaml");
+/// Vendored DRS OpenAPI 1.4.0 from ga4gh/data-repository-service-schemas (release/drs-1.4.0).
+const DRS_OPENAPI_YAML: &str = include_str!("../../../schemas/ga4gh/drs-openapi.yaml");
+/// Bundled Beacon v2 boolean response (draft-07 inlined from ga4gh-beacon/beacon-v2).
+const BEACON_BOOLEAN_RESPONSE_JSON: &str =
+    include_str!("../../../schemas/ga4gh/beacon-boolean-response.json");
 
 static WES_SERVICE_INFO_SCHEMA: OnceCell<JSONSchema> = OnceCell::new();
 static TES_TASK_SCHEMA: OnceCell<JSONSchema> = OnceCell::new();
@@ -26,6 +33,8 @@ static HTSGET_SERVICE_INFO_SCHEMA: OnceCell<JSONSchema> = OnceCell::new();
 static HTSGET_TICKET_READS_SCHEMA: OnceCell<JSONSchema> = OnceCell::new();
 static HTSGET_TICKET_VARIANTS_SCHEMA: OnceCell<JSONSchema> = OnceCell::new();
 static HTSGET_ERROR_SCHEMA: OnceCell<JSONSchema> = OnceCell::new();
+static DRS_OBJECT_SCHEMA: OnceCell<JSONSchema> = OnceCell::new();
+static BEACON_BOOLEAN_RESPONSE_SCHEMA: OnceCell<JSONSchema> = OnceCell::new();
 
 /// Resolve OpenAPI YAML and extract a schema by name from components.schemas.
 /// Uses resolve() so partial resolution is accepted (e.g. when external refs exist);
@@ -186,6 +195,39 @@ pub fn validate_htsget_error(value: &Value) -> Result<()> {
     validate_against(schema, value, "GA4GH htsget Error schema")
 }
 
+// --- DRS (Data Repository Service 1.4.0) ---
+
+fn load_drs_object_schema() -> Result<JSONSchema> {
+    let schema = resolve_and_get_schema(DRS_OPENAPI_YAML, "DrsObject", "DRS OpenAPI")?;
+    compile_schema(schema, "DRS DrsObject")
+}
+
+/// Validate GET `/objects/{id}` JSON against official GA4GH DRS `DrsObject`.
+pub fn validate_drs_object(value: &Value) -> Result<()> {
+    let schema = DRS_OBJECT_SCHEMA.get_or_try_init(load_drs_object_schema)?;
+    validate_against(schema, value, "GA4GH DRS DrsObject schema")
+}
+
+// --- Beacon v2 boolean response ---
+
+fn load_beacon_boolean_response_schema() -> Result<JSONSchema> {
+    let schema: Value = serde_json::from_str(BEACON_BOOLEAN_RESPONSE_JSON)
+        .context("Beacon boolean response schema: parse error")?;
+    compile_schema(schema, "Beacon v2 beaconBooleanResponse")
+}
+
+/// Validate a Beacon v2 boolean `/query` JSON body against the published framework shape
+/// (`meta` + `responseSummary.exists`). Extra properties (e.g. `response.exists`) are allowed.
+pub fn validate_beacon_boolean_response(value: &Value) -> Result<()> {
+    let schema =
+        BEACON_BOOLEAN_RESPONSE_SCHEMA.get_or_try_init(load_beacon_boolean_response_schema)?;
+    validate_against(
+        schema,
+        value,
+        "GA4GH Beacon v2 beaconBooleanResponse schema",
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -263,5 +305,47 @@ mod tests {
             "htsget": { "error": "NotFound", "message": "nope" }
         });
         validate_htsget_error(&ok).expect("htsget error body");
+    }
+
+    #[test]
+    fn drs_object_schema_rejects_invalid_and_accepts_minimal() {
+        assert!(validate_drs_object(&serde_json::json!(42)).is_err());
+        assert!(validate_drs_object(&serde_json::json!({})).is_err());
+        let ok = serde_json::json!({
+            "id": "test-object-1",
+            "self_uri": "drs://example.org/test-object-1",
+            "size": 12,
+            "created_time": "2026-01-01T00:00:00Z",
+            "checksums": [{ "type": "sha256", "checksum": "abc" }]
+        });
+        validate_drs_object(&ok).expect("minimal DRS object should validate");
+    }
+
+    #[test]
+    fn beacon_boolean_response_requires_official_meta_and_summary() {
+        assert!(validate_beacon_boolean_response(&serde_json::json!({})).is_err());
+        assert!(validate_beacon_boolean_response(&serde_json::json!({
+            "meta": { "apiVersion": "v2.0.0" },
+            "response": { "exists": true }
+        }))
+        .is_err());
+        let ok = serde_json::json!({
+            "meta": {
+                "beaconId": "org.example.beacon",
+                "apiVersion": "v2.0.0",
+                "returnedSchemas": [],
+                "returnedGranularity": "boolean",
+                "receivedRequestSummary": {
+                    "apiVersion": "v2.0.0",
+                    "requestedSchemas": [],
+                    "pagination": {},
+                    "requestedGranularity": "boolean"
+                }
+            },
+            "responseSummary": { "exists": true },
+            "response": { "exists": true }
+        });
+        validate_beacon_boolean_response(&ok)
+            .expect("official boolean response plus extra response.exists");
     }
 }

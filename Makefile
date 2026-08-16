@@ -1,6 +1,6 @@
 # HelixTest — build and run conformance (no local stack)
 
-.PHONY: help install test prove
+.PHONY: help install test prove spdx-check
 
 # Live-stack crates need a running Ferrum/infra target. Same excludes as CI.
 OFFLINE_TEST_FLAGS := --workspace --exclude api-tests --exclude auth-tests --exclude e2e-tests --exclude workflow-tests
@@ -26,5 +26,9 @@ test:
 
 # Zero-risk customer path. Live Ferrum proof: docs/PROVE.md
 prove: test
+	$(MAKE) spdx-check
 	cargo build --release -p helixtest-cli
 	@echo "HelixTest prove OK. Binary: target/release/helixtest"
+
+spdx-check:
+	python3 scripts/spdx-rs.py . --license Apache-2.0 --check

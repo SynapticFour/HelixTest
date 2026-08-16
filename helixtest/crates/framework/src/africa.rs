@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 //! Africa-mode conformance checks (opt-in; does not affect `--mode ferrum`).
 
 use common::config::TestConfig;

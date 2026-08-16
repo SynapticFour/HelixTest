@@ -23,3 +23,5 @@ We value precise, respectful, and actionable feedback. Please keep discussions t
 ## License
 
 By contributing, you agree that your contributions are licensed under this repository's license.
+
+New first-party Rust files start with `// SPDX-License-Identifier: Apache-2.0`. CI workflow `spdx.yml` greps for that header.

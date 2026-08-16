@@ -15,7 +15,7 @@ git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest
 make prove
 ```
 
-Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**. CI on `main` / PRs runs the same `make prove` (offline tests + release CLI; live-stack crates excluded).
+Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**. CI on `main` / PRs runs the same `make prove` (offline tests + release CLI; live-stack crates excluded). Third-party GitHub Actions: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) (v0.1.1 binaries; does not start Ferrum).
 
 **Run against a local Ferrum demo** (start Ferrum first — see [Ferrum README](https://github.com/SynapticFour/Ferrum)):
 
@@ -35,6 +35,7 @@ helixtest --all --mode ferrum+infra --profile ferrum-infra
 |---------|---------|
 | `helixtest --all --mode ferrum` | Full suite against Ferrum demo stack |
 | `helixtest --all --mode ferrum+infra --profile ferrum-infra` | Co-deploy broker + Passport-on-DRS |
+| `helixtest --all --mode ferrum+infra --profile ferrum-infra-pilot` | Same against Ferrum `make up-pilot-local` (:8080) |
 | `helixtest --all --only wes --mode ferrum` | Single service |
 | `helixtest --help` | All flags, report formats, fail levels |
 

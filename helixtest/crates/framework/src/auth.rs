@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 //! Level 4 security: HMAC-SHA256 JWT fixture against DRS (shared secret), plus optional
 //! token-protected endpoints. This is **not** GA4GH Passports/OIDC; Passport checks live in
 //! `--mode ferrum+infra` (`infra.rs`).

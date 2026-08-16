@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use serde_json::Value;
 
 /// Helper to assert required fields exist and have expected JSON types.

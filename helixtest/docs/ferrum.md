@@ -98,6 +98,10 @@ helixtest --all --mode ferrum+infra --profile ferrum-infra
 | Broker login → Passport | mock-idp OIDC flow via broker `/login` |
 | Passport on DRS | `Authorization: Bearer <Passport>` accepted on Ferrum DRS `GET /objects/{id}` |
 
+If the broker, registry, or login flow is down, these checks **fail** (they do not skip). A green `--mode ferrum+infra` run means the identity join was actually there.
+
+**GitHub-hosted proof:** Ferrum workflow [`helixtest-ferrum-infra.yml`](https://github.com/SynapticFour/Ferrum/blob/main/.github/workflows/helixtest-ferrum-infra.yml) (`make up-pilot-local`, gateway **8080**). Demo co-deploy uses profile `ferrum-infra` (port **18080**). Ferrum laptop path uses `ferrum-infra-pilot` (port **8080**).
+
 **URLs** (override via env): `GA4GH_BROKER_URL`, `GA4GH_SERVICE_REGISTRY_URL`,
 `GATEWAY_BASE`, `HELIXTEST_AUTH_OBJECT_ID` (default `test-object-1`).
 

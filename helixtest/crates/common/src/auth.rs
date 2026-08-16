@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use anyhow::Result;
 use base64::{engine::general_purpose, Engine as _};
 use chrono::{Duration, Utc};

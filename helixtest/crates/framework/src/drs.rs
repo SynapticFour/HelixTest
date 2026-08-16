@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use anyhow::Result;
 use common::config::TestConfig;
 use common::http::HttpClient;
@@ -52,9 +53,14 @@ async fn level1_basic_schema_and_fields(cfg: &TestConfig, client: &HttpClient) -
     let res = client
         .get_json(&url)
         .await
-        .and_then(|v| validate_basic_drs_object("test-object-1", &v));
+        .and_then(|v| {
+            common::ga4gh_schemas::validate_drs_object(&v)?;
+            validate_basic_drs_object("test-object-1", &v)?;
+            Ok(v)
+        })
+        .map(|_| ());
     TestCaseResult::from_outcome(
-        "DRS basic fields and access_methods",
+        "DRS DrsObject OpenAPI + access_methods",
         ComplianceLevel::Level1,
         TestCategory::Schema,
         res,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 //! Cross-service interoperability checks (Level 3): TRS → DRS → WES → DRS output → Beacon.
 //!
 //! **Scope:** This module drives WES to **terminal `COMPLETE`** via `common::workflow::poll_wes_run_until_terminal`.

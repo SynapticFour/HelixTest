@@ -1,0 +1,103 @@
+# Opt-in: HelixTest / HTTP proof against published Ferrum GHCR with require_auth=true.
+#
+# Does not replace Live Ferrum GHCR (that job stays auth-off demo). This is the
+# published-image HS256 path (same idea as Ferrum `make eval`), not ga4gh-infra Passports.
+
+name: Live Ferrum GHCR auth-on
+
+on:
+  schedule:
+    - cron: "27 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      ferrum_image:
+        description: "Full GHCR image reference"
+        required: true
+        default: "ghcr.io/synapticfour/ferrum:v0.3.1-edge"
+
+concurrency:
+  group: live-ferrum-ghcr-auth
+  cancel-in-progress: true
+
+jobs:
+  helixtest-published-ferrum-auth:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Mint HS256 secret
+        run: |
+          SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$SECRET"
+          echo "FERRUM_AUTH__JWT_SECRET=$SECRET" >> "$GITHUB_ENV"
+          echo "HELIXTEST_SHARED_SECRET=$SECRET" >> "$GITHUB_ENV"
+
+      - name: Pull published Ferrum
+        env:
+          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:v0.3.1-edge' }}
+        run: docker pull "$FERRUM_IMAGE"
+
+      - name: Start Ferrum edge (SQLite, require_auth HS256)
+        env:
+          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:v0.3.1-edge' }}
+        run: |
+          docker run -d --name ferrum-live-auth --user 65532:65532 \
+            -p 8080:8080 \
+            -e FERRUM_OFFLINE=1 \
+            -e FERRUM_AUTH__REQUIRE_AUTH=true \
+            -e FERRUM_AUTH__JWT_SECRET \
+            -e FERRUM_AUTH__JWKS_URL= \
+            -e FERRUM_AUTH__ISSUER= \
+            -e FERRUM_AUTH__AUDIENCE= \
+            -e FERRUM_DATABASE__SQLITE_PATH=/tmp/ferrum.db \
+            "$FERRUM_IMAGE"
+          for i in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8080/health" || echo "000")
+            if [ "$code" = "200" ] || [ "$code" = "401" ]; then
+              echo "Ferrum is up (GET /health -> $code)"
+              exit 0
+            fi
+            sleep 3
+          done
+          docker logs ferrum-live-auth || true
+          echo "Ferrum did not become ready" >&2
+          exit 1
+
+      - name: Prove HS256 on the published image
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > /tmp/token
+          import base64, hashlib, hmac, json, os, time
+          def b64url(data: bytes) -> str:
+              return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+          secret = os.environ["FERRUM_AUTH__JWT_SECRET"]
+          now = int(time.time())
+          header = b64url(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
+          claims = b64url(json.dumps({
+              "iss": "https://auth.ga4gh.test",
+              "sub": "test-user",
+              "aud": "ferrum",
+              "exp": now + 3600,
+              "iat": now,
+              "scope": "wes.read tes.read",
+          }, separators=(",", ":")).encode())
+          signing = f"{header}.{claims}".encode()
+          sig = b64url(hmac.new(secret.encode(), signing, hashlib.sha256).digest())
+          print(f"{header}.{claims}.{sig}")
+          PY
+          TOKEN="$(cat /tmp/token)"
+          echo "::add-mask::$TOKEN"
+          BASE=http://127.0.0.1:8080/ga4gh/drs/v1/service-info
+          bad=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer not-a-jwt" "$BASE" || echo "000")
+          good=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $TOKEN" "$BASE" || echo "000")
+          echo "DRS service-info garbage bearer -> $bad (expect 401)"
+          echo "DRS service-info HS256 bearer -> $good (expect 200)"
+          if [ "$bad" != "401" ] || [ "$good" != "200" ]; then
+            docker logs ferrum-live-auth 2>&1 | tail -80 || true
+            exit 1
+          fi
+          echo "Published Ferrum image accepts HS256 and rejects a garbage Bearer."
+          echo "This is not a Passport/AAI proof (that is Ferrum ferrum+infra CI)."

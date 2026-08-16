@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 //! WES run submission and status polling helpers.
 //!
 //! **Conformance semantics (not performance):** Polling continues until the WES `/runs/{id}/status`

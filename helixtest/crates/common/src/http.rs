@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use crate::logging::init_logging;
 use anyhow::Result;
 use reqwest::{Client, Response};

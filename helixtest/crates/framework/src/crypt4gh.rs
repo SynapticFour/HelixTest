@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use anyhow::Result;
 use common::config::TestConfig;
 use common::crypto::{corrupt_file, decrypt_file, decrypt_partial, encrypt_file};

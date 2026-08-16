@@ -27,10 +27,16 @@ This document outlines the changes needed to validate API responses against **of
 - **Loading:** Same pipeline as WES/TES; compiled schemas: **htsgetServiceInfo**, **htsgetResponseReads**, **htsgetResponseVariants**, **Error**.
 - **Framework:** `framework/src/htsget.rs` calls `validate_htsget_service_info()` for reads/variants service-info (plus endpoint checks: `type.version == 1.3.0`, datatype, BAM / VCF|BCF), `validate_htsget_ticket_reads` / `validate_htsget_ticket_variants` for successful tickets (GET/POST and dataset-auth path), and `validate_htsget_error()` for JSON error bodies where applicable; DRS stream URL on the first ticket URL remains an extra interoperability rule.
 
-## Current approach (DRS, Beacon)
+## Implemented: DRS
 
-- **DRS:** Level 1 uses manual field checks in `validate_basic_drs_object()` (id, self_uri, name, access_methods). The official DRS spec is multi-file; full schema validation could be added later by bundling or resolving those refs.
-- **Beacon:** Level 1 uses Rust struct deserialization (`BeaconResponse` with meta/response). The Beacon v2 framework uses split JSON schemas with `$ref` to common/sections; official schema validation could be added by vendoring and resolving those assets.
+- **Vendored:** `helixtest/schemas/ga4gh/drs-openapi.yaml` (DRS **1.4.0** from [data-repository-service-schemas](https://ga4gh.github.io/data-repository-service-schemas/preview/release/drs-1.4.0/openapi.yaml)).
+- **Loading:** Same OpenAPI `$ref` pipeline; schema **DrsObject**.
+- **Framework:** DRS Level 1 calls `validate_drs_object()` then HelixTest extras (expected id, non-empty `access_methods`).
+
+## Implemented: Beacon v2
+
+- **Vendored:** `helixtest/schemas/ga4gh/beacon-boolean-response.json` — required shape of [beaconBooleanResponse](https://github.com/ga4gh-beacon/beacon-v2/blob/main/framework/json/responses/beaconBooleanResponse.json) inlined to JSON Schema **draft-07** (`jsonschema` 0.17 cannot compile the upstream 2020-12 split `$ref` tree offline).
+- **Framework:** Beacon Level 1 uses `validate_beacon_boolean_response()` (`meta` + `responseSummary.exists`). Level 2 existence reads `responseSummary.exists`, then `response.exists` if present.
 
 ## Goal
 

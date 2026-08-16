@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 //! GA4GH htsget 1.3.0 checks (Ferrum gateway: `/ga4gh/htsget/v1`).
 //!
 //! Aligns with [Ferrum `ferrum-htsget`](https://github.com/SynapticFour/Ferrum): `reads/service-info`,

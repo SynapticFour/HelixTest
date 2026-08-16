@@ -20,6 +20,11 @@ make prove
 # Against a stack you started:
 helixtest --all --mode ferrum
 helixtest --all --mode ferrum+infra --profile ferrum-infra
+helixtest --all --mode ferrum+infra --profile ferrum-infra-pilot   # Ferrum make up-pilot-local (:8080)
 ```
 
+Third-party GitHub Actions: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) (same `v0.1.1` binaries). The action does not start Ferrum.
+
 Results are **not** official GA4GH certification. Product pin is git tag **v0.1.1** (`a8aabf30…`) — same SHA as Ferrum `VERSIONS.lock`. The CLI crate `version` in `Cargo.toml` may stay `0.1.0`; operators pin the **tag**, not the crate number.
+
+**Ferrum HTTP:** HelixTest validates against the **published GA4GH OpenAPI** for each standard (vendored under `helixtest/schemas/ga4gh/`). Ferrum’s [utoipa dump](https://github.com/SynapticFour/Ferrum/blob/main/docs/openapi/ferrum.openapi.json) is an implementation map (gateway paths, Ferrum-only additions), not a second spec.

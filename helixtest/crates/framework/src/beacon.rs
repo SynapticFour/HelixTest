@@ -1,34 +1,23 @@
+// SPDX-License-Identifier: Apache-2.0
 use anyhow::Result;
 use common::config::TestConfig;
+use common::ga4gh_schemas;
 use common::http::HttpClient;
 use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCaseResult, TestCategory};
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
 
 use crate::{level0_http, Features, Mode};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct BeaconMeta {
-    #[serde(rename = "apiVersion")]
-    pub api_version: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct BeaconResponseSummary {
-    pub exists: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct BeaconResponse {
-    pub meta: BeaconMeta,
-    pub response: Option<BeaconResponseInner>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct BeaconResponseInner {
-    pub exists: Option<bool>,
-    pub summary: Option<BeaconResponseSummary>,
+fn beacon_exists(v: &serde_json::Value) -> Result<bool> {
+    v.pointer("/responseSummary/exists")
+        .or_else(|| v.pointer("/response/exists"))
+        .and_then(|x| x.as_bool())
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "Beacon response missing responseSummary.exists (and response.exists): {v}"
+            )
+        })
 }
 
 pub async fn run_beacon_checks(
@@ -75,14 +64,13 @@ async fn level1_schema(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult 
                 }),
             )
             .await?;
-        let _: BeaconResponse = serde_json::from_value(v.clone())
-            .map_err(|e| anyhow::anyhow!("Beacon response schema error: {e}; value={v}"))?;
+        ga4gh_schemas::validate_beacon_boolean_response(&v)?;
         Ok::<(), anyhow::Error>(())
     }
     .await;
 
     TestCaseResult::from_outcome(
-        "Beacon response schema",
+        "Beacon boolean response (official schema)",
         ComplianceLevel::Level1,
         TestCategory::Schema,
         res,
@@ -121,10 +109,7 @@ async fn level2_known_variant_exists(
                 }),
             )
             .await?;
-        let exists = v
-            .pointer("/response/exists")
-            .and_then(|x| x.as_bool())
-            .ok_or_else(|| anyhow::anyhow!("Beacon response missing response.exists: {}", v))?;
+        let exists = beacon_exists(&v)?;
         info!(
             referenceName = "1",
             start = 1000,
@@ -182,10 +167,7 @@ async fn level2_negative_variant_not_exists(
                 }),
             )
             .await?;
-        let exists = v
-            .pointer("/response/exists")
-            .and_then(|x| x.as_bool())
-            .ok_or_else(|| anyhow::anyhow!("Beacon response missing response.exists: {}", v))?;
+        let exists = beacon_exists(&v)?;
         info!(
             referenceName = "1",
             start = 999999999i64,

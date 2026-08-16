@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 //! Optional Ferrum HTTP integration: DRS Crypt4GH **rewrap** (`X-Crypt4GH-Public-Key`) vs **decrypt_plain** (plaintext URL).
 
 use anyhow::Result;
