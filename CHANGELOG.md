@@ -7,16 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-16
+
+Ferrum CI should pin this tag (`VERSIONS.lock` `HELIXTEST_REF=v0.1.2`). `v0.1.1` remains the previous cut.
+
 ### Changed
 
 - `make test` / `make prove` use the same offline crate excludes as CI (`api-tests`, `auth-tests`, `e2e-tests`, `workflow-tests` need a live target).
 - CI `build-and-test` and ARM jobs run `make prove` (same command as a local clone).
-- Live Ferrum GHCR default image is `ghcr.io/synapticfour/ferrum:v0.3.1-edge` (schedule uses the same fallback). GitHub Release v0.1.1 ships linux-gnu x86_64/aarch64 and darwin aarch64 binaries.
+- Live Ferrum GHCR default image is `ghcr.io/synapticfour/ferrum:v0.3.1-edge` (schedule uses the same fallback). GitHub Release ships linux-gnu x86_64/aarch64 and darwin aarch64 binaries.
 - `--mode ferrum+infra`: unreachable broker/registry/login **fails** (no skip-as-green). Profile `ferrum-infra-pilot` matches Ferrum `make up-pilot-local` on port 8080.
 - **Live Ferrum GHCR auth-on** workflow: published `v0.3.1-edge` with `require_auth=true` (HS256). Demo Live GHCR job stays auth-off.
-- Third-party wrapper: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) (same v0.1.1 binaries). Does not start Ferrum.
+- Third-party wrapper: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) (v0.1.1 binaries until this tag’s release assets exist). Does not start Ferrum.
 - **SPDX on first-party `.rs`** — `// SPDX-License-Identifier: Apache-2.0`; CI `spdx.yml`.
 - **DRS + Beacon official schemas** — Level 1 validates DRS `DrsObject` (OpenAPI 1.4.0) and Beacon v2 `beaconBooleanResponse` (bundled draft-07). Not Ferrum’s utoipa dump.
+- Gitleaks allowlists example JWTs in the vendored DRS OpenAPI (spec fixtures, not credentials).
 
 ## [0.1.1] - 2026-08-15
 

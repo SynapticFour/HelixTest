@@ -1,0 +1,13 @@
+# Gitleaks configuration (see https://github.com/gitleaks/gitleaks)
+#
+# Vendored GA4GH OpenAPI includes documented example JWTs. Those are spec
+# fixtures, not credentials. Do not allowlist other JWT-shaped strings.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Official GA4GH DRS OpenAPI example JWTs (not credentials)"
+paths = [
+  '''^helixtest/schemas/ga4gh/drs-openapi.yaml$''',
+]
