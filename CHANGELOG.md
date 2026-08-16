@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Live GHCR demo seeds Beacon `chr1:1000 A>T` into the published-edge SQLite so `--only beacon --fail-level 2` is not an empty-DB false negative.
+- Live GHCR demo: `sudo install -d` for the SQLite bind mount (chmod after chown 65532 failed as the runner). Seed step opens the mount for host `sqlite3`, then chowns back to 65532.
 - Live GHCR auth-on runs `helixtest --only auth` (HMAC on DRS `service-info` via `HELIXTEST_AUTH_SURFACE=service-info`). Curl HS256 remains a pre-check. Not Passport/AAI.
 - HMAC auth suite: `HELIXTEST_AUTH_SURFACE=service-info` for published edge (no `test-object-1`); garbage Bearer still must be 401.
 

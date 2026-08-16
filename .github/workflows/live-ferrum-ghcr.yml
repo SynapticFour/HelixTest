@@ -57,9 +57,8 @@ jobs:
           set -euo pipefail
           DATA="${RUNNER_TEMP}/ferrum-sqlite"
           mkdir -p "$DATA"
-          # Edge runs as uid 65532; a root-owned bind mount cannot create ferrum.db.
-          sudo chown 65532:65532 "$DATA"
-          chmod 0770 "$DATA"
+          # Edge runs as uid 65532. After chown the runner cannot chmod without sudo.
+          sudo install -d -o 65532 -g 65532 -m 0770 "$DATA"
           docker run -d --name ferrum-live --user 65532:65532 \
             -p 8080:8080 \
             -v "$DATA:/data" \
@@ -84,6 +83,8 @@ jobs:
           set -euo pipefail
           DATA="${RUNNER_TEMP}/ferrum-sqlite"
           docker stop ferrum-live
+          # Runner is not uid 65532; open the bind mount for sqlite3, then hand it back.
+          sudo chmod -R a+rwX "$DATA"
           sqlite3 "$DATA/ferrum.db" <<'SQL'
           INSERT OR IGNORE INTO beacon_datasets (id, name, description, assembly_id)
           VALUES ('default', 'HelixTest Live GHCR seed', 'chr1:1000 A>T', 'GRCh38');
@@ -95,7 +96,7 @@ jobs:
               AND reference = 'A' AND alternate = 'T'
           );
           SQL
-          sudo chown 65532:65532 "$DATA/ferrum.db" "$DATA"/ferrum.db-* 2>/dev/null || sudo chown 65532:65532 "$DATA/ferrum.db"
+          sudo chown -R 65532:65532 "$DATA"
           docker start ferrum-live
           for i in $(seq 1 40); do
             if curl -sf "http://127.0.0.1:8080/health" >/dev/null; then
