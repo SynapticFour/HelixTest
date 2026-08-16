@@ -1,8 +1,10 @@
 # Opt-in: HelixTest against published Ferrum GHCR (edge / SQLite).
 #
 # Does not run on pull requests. This is demo-mode (auth off, FERRUM_OFFLINE=1),
-# labeled honestly — not a hospital auth-on proof. Default image is the tagged
-# edge variant so Beacon/DRS run without Postgres.
+# labeled honestly — not a hospital auth-on proof. Default image is GHCR `:edge`
+# (latest main publish). Tag `v0.3.1-edge` lacks official Beacon boolean `meta`
+# fields; HelixTest v0.1.2 fail-level 2 rejects it. Pass an explicit SHA or tag
+# via workflow_dispatch if you need a frozen cut.
 
 name: Live Ferrum GHCR
 
@@ -15,7 +17,7 @@ on:
       ferrum_image:
         description: "Full GHCR image reference"
         required: true
-        default: "ghcr.io/synapticfour/ferrum:v0.3.1-edge"
+        default: "ghcr.io/synapticfour/ferrum:edge"
       only:
         description: "HelixTest --only surface. Empty = --all (edge has no WES)."
         required: false
@@ -47,12 +49,12 @@ jobs:
 
       - name: Pull published Ferrum
         env:
-          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:v0.3.1-edge' }}
+          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:edge' }}
         run: docker pull "$FERRUM_IMAGE"
 
       - name: Start Ferrum edge (SQLite, auth-off demo)
         env:
-          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:v0.3.1-edge' }}
+          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:edge' }}
         run: |
           set -euo pipefail
           DATA="${RUNNER_TEMP}/ferrum-sqlite"
