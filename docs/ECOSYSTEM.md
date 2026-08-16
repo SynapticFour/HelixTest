@@ -105,4 +105,4 @@ helixtest --all --mode ferrum+infra --profile ferrum-infra
 
 ## CI
 
-GitHub Actions runs `cargo test`, ARM64 builds, and dependabot smoke on `main`. Ferrum and Ferrum-Lab-Kit invoke HelixTest in their own CI workflows.
+GitHub Actions runs `cargo test` (plus MSRV 1.88) on `main`. Ferrum and Ferrum-Lab-Kit invoke HelixTest in their own CI workflows. Pin care: [DEPENDENCY.md](DEPENDENCY.md) — Dependabot/Renovate off.

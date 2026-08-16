@@ -7,6 +7,9 @@
 name: Live Ferrum GHCR
 
 on:
+  schedule:
+    # Public ambassador proof; demo-mode (auth off). Skip if GHCR pull fails.
+    - cron: "17 4 * * 1"
   workflow_dispatch:
     inputs:
       ferrum_image:

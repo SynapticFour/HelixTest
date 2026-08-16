@@ -38,6 +38,8 @@ helixtest --all --mode ferrum+infra --profile ferrum-infra
 | `helixtest --all --only wes --mode ferrum` | Single service |
 | `helixtest --help` | All flags, report formats, fail levels |
 
+**Exit codes (Uniklinik IT):** `0` = suite met `--fail-level`; `1` = failures (or usage error). `--report table` is the human report; `--report json` is for CI. Example: a Beacon 404 prints the URL and expected status — start the target (`make up` in Ferrum) before re-running.
+
 Full usage, architecture, and CI integration: **[helixtest/README.md](helixtest/README.md)**. Known limitations: **[helixtest/docs/known-limitations.md](helixtest/docs/known-limitations.md)**.
 
 ### Test areas
@@ -57,4 +59,4 @@ For Ferrum-specific guidance: [helixtest/docs/ferrum.md](helixtest/docs/ferrum.m
 
 ---
 
-Synaptic Four · [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com)
+**Synaptic Four** · [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com) · Apache-2.0 (free)

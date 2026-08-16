@@ -22,4 +22,4 @@ helixtest --all --mode ferrum
 helixtest --all --mode ferrum+infra --profile ferrum-infra
 ```
 
-Results are **not** official GA4GH certification. Pin: tag **v0.1.1** (`a8aabf30…`) — same SHA as Ferrum `VERSIONS.lock`.
+Results are **not** official GA4GH certification. Product pin is git tag **v0.1.1** (`a8aabf30…`) — same SHA as Ferrum `VERSIONS.lock`. The CLI crate `version` in `Cargo.toml` may stay `0.1.0`; operators pin the **tag**, not the crate number.

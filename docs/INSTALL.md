@@ -2,23 +2,24 @@
 
 HelixTest is a **free Apache-2.0 ambassador** CLI (`helixtest`). It is not a server.
 
-**MSRV is Rust 1.88.0** (encoded in the workspace). Ferrum/Lab-Kit/ga4gh-infra currently use 1.91.1; HelixTest stays on 1.88 so third parties can build on the older stable compiler. CI has an explicit 1.88 MSRV job.
+**MSRV is Rust 1.88.0** (encoded in the workspace). This repo’s `rust-toolchain.toml` is **1.91.1** (same channel as Ferrum / Lab-Kit / ga4gh-infra / Solum). CI keeps an explicit 1.88 MSRV job so third parties can still build on the older compiler.
 
 ## One binary
 
-Until GitHub Release assets exist for a tag, the supported no-clone install is Cargo (Rust 1.88+):
+Prefer a GitHub Release asset when it exists. Otherwise Cargo (Rust 1.88+; libsodium for the workspace):
 
 ```bash
-# libsodium is required (crypt4gh tests crate in the workspace)
-# macOS: brew install libsodium
-# Debian/Ubuntu: sudo apt-get install -y libsodium-dev pkg-config
+# Linux x86_64 (sha256 next to the asset). 404 → cargo install below.
+curl -fsSL -o helixtest \
+  https://github.com/SynapticFour/HelixTest/releases/download/v0.1.1/helixtest-x86_64-unknown-linux-gnu
+chmod +x helixtest
 
+# Fallback (needs Rust + libsodium-dev / brew libsodium):
 cargo install --git https://github.com/SynapticFour/HelixTest.git \
   --tag v0.1.1 --locked --bin helixtest
 ```
 
-Pushing a `v*` tag runs `.github/workflows/release-binaries.yml` and attaches
-`helixtest-*` binaries to the GitHub Release. `cargo binstall` is not published yet.
+Attach missing assets: Actions → **Release binaries** → `workflow_dispatch` with tag `v0.1.1`. `cargo binstall` is not published.
 
 ## One URL, one report
 
@@ -32,4 +33,12 @@ Point the CLI at a running target (env vars / profile — see [PROVE.md](PROVE.m
 
 ## Public proof against published Ferrum
 
-Opt-in (does not run on every PR): GitHub Actions workflow **Live Ferrum GHCR** (`workflow_dispatch`) pulls `ghcr.io/synapticfour/ferrum:v0.3.0-edge`, starts it **auth-off / SQLite demo-mode**, and runs HelixTest. That is the public claim that a tagged Ferrum image answers Beacon/DRS HTTP — not a hospital auth-on proof, and not the Demo overlay path.
+Opt-in (does not run on every PR): GitHub Actions workflow **Live Ferrum GHCR** (`workflow_dispatch`, plus a weekly schedule) pulls `ghcr.io/synapticfour/ferrum:v0.3.0-edge`, starts it **auth-off / SQLite demo-mode**, and runs HelixTest. That is the public claim that a tagged Ferrum image answers Beacon/DRS HTTP — not a hospital auth-on proof, and not the Demo overlay path.
+
+**Ferrum + ga4gh-infra (complementary stack):** pin Ferrum **v0.3.0** and **ga4gh-infra-v0.2.3** (same as Ferrum `VERSIONS.lock`), start with Ferrum-GA4GH-Demo `./run --with-infra` (still needs the v0.3.0 overlay until the next Ferrum tag), then:
+
+```bash
+helixtest --all --mode ferrum+infra --profile ferrum-infra --report table --fail-level 2
+```
+
+That live pair is **not** a GitHub-hosted job (compose + siblings). Document a green local run; do not invent a CI badge.
