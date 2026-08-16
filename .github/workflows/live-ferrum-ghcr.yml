@@ -57,6 +57,9 @@ jobs:
           set -euo pipefail
           DATA="${RUNNER_TEMP}/ferrum-sqlite"
           mkdir -p "$DATA"
+          # Edge runs as uid 65532; a root-owned bind mount cannot create ferrum.db.
+          sudo chown 65532:65532 "$DATA"
+          chmod 0770 "$DATA"
           docker run -d --name ferrum-live --user 65532:65532 \
             -p 8080:8080 \
             -v "$DATA:/data" \
