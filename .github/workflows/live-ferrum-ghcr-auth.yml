@@ -35,6 +35,17 @@ jobs:
           echo "FERRUM_AUTH__JWT_SECRET=$SECRET" >> "$GITHUB_ENV"
           echo "HELIXTEST_SHARED_SECRET=$SECRET" >> "$GITHUB_ENV"
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@1.88.0
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install libsodium
+        run: sudo apt-get update && sudo apt-get install -y libsodium-dev pkg-config
+
+      - name: Build helixtest
+        run: cargo build --locked --release --bin helixtest
+
       - name: Pull published Ferrum
         env:
           FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:v0.3.1-edge' }}
@@ -101,3 +112,17 @@ jobs:
           fi
           echo "Published Ferrum image accepts HS256 and rejects a garbage Bearer."
           echo "This is not a Passport/AAI proof (that is Ferrum ferrum+infra CI)."
+
+      - name: Run HelixTest --only auth
+        env:
+          GATEWAY_BASE: http://127.0.0.1:8080
+          DRS_URL: http://127.0.0.1:8080/ga4gh/drs/v1
+          AUTH_URL: http://127.0.0.1:8080/ga4gh/drs/v1
+          # Published edge has no seeded DRS object; prove HS256 on service-info.
+          HELIXTEST_AUTH_SURFACE: service-info
+        run: |
+          set -euo pipefail
+          test -z "${HELIXTEST_SKIP_AUTH:-}"
+          echo "Running: helixtest --only auth --mode ferrum --fail-level 4"
+          ./target/release/helixtest \
+            --all --mode ferrum --only auth --report json --fail-level 4

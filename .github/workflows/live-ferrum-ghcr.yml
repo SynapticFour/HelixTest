@@ -39,8 +39,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install libsodium
-        run: sudo apt-get update && sudo apt-get install -y libsodium-dev pkg-config
+      - name: Install libsodium and sqlite3
+        run: sudo apt-get update && sudo apt-get install -y libsodium-dev pkg-config sqlite3
 
       - name: Build helixtest
         run: cargo build --locked --release --bin helixtest
@@ -54,12 +54,16 @@ jobs:
         env:
           FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:v0.3.1-edge' }}
         run: |
+          set -euo pipefail
+          DATA="${RUNNER_TEMP}/ferrum-sqlite"
+          mkdir -p "$DATA"
           docker run -d --name ferrum-live --user 65532:65532 \
             -p 8080:8080 \
+            -v "$DATA:/data" \
             -e FERRUM_OFFLINE=1 \
             -e FERRUM_DEMO=1 \
             -e FERRUM_AUTH__REQUIRE_AUTH=false \
-            -e FERRUM_DATABASE__SQLITE_PATH=/tmp/ferrum.db \
+            -e FERRUM_DATABASE__SQLITE_PATH=/data/ferrum.db \
             "$FERRUM_IMAGE"
           for i in $(seq 1 40); do
             if curl -sf "http://127.0.0.1:8080/health" >/dev/null; then
@@ -71,6 +75,37 @@ jobs:
           docker logs ferrum-live || true
           echo "Ferrum did not become ready" >&2
           exit 1
+
+      - name: Seed HelixTest Beacon fixture (chr1:1000 A>T)
+        run: |
+          set -euo pipefail
+          DATA="${RUNNER_TEMP}/ferrum-sqlite"
+          docker stop ferrum-live
+          sqlite3 "$DATA/ferrum.db" <<'SQL'
+          INSERT OR IGNORE INTO beacon_datasets (id, name, description, assembly_id)
+          VALUES ('default', 'HelixTest Live GHCR seed', 'chr1:1000 A>T', 'GRCh38');
+          INSERT INTO beacon_variants (dataset_id, chromosome, start, "end", reference, alternate, variant_type)
+          SELECT 'default', 'chr1', 1000, 1000, 'A', 'T', 'SNV'
+          WHERE NOT EXISTS (
+            SELECT 1 FROM beacon_variants
+            WHERE dataset_id = 'default' AND chromosome = 'chr1' AND start = 1000
+              AND reference = 'A' AND alternate = 'T'
+          );
+          SQL
+          sudo chown 65532:65532 "$DATA/ferrum.db" "$DATA"/ferrum.db-* 2>/dev/null || sudo chown 65532:65532 "$DATA/ferrum.db"
+          docker start ferrum-live
+          for i in $(seq 1 40); do
+            if curl -sf "http://127.0.0.1:8080/health" >/dev/null; then
+              echo "Ferrum is up after Beacon seed"
+              break
+            fi
+            if [ "$i" -eq 40 ]; then
+              docker logs ferrum-live || true
+              echo "Ferrum did not become ready after seed" >&2
+              exit 1
+            fi
+            sleep 3
+          done
 
       - name: Run HelixTest (demo-mode / auth-off)
         env:

@@ -2,6 +2,10 @@
 //! Level 4 security: HMAC-SHA256 JWT fixture against DRS (shared secret), plus optional
 //! token-protected endpoints. This is **not** GA4GH Passports/OIDC; Passport checks live in
 //! `--mode ferrum+infra` (`infra.rs`).
+//!
+//! `HELIXTEST_AUTH_SURFACE=service-info` targets DRS `/service-info` (published edge SQLite
+//! has no `test-object-1`). Garbage/expired JWT still 401; missing Bearer on service-info is
+//! public metadata and is skipped.
 
 use crate::{level0_http, Features, Mode};
 use anyhow::Result;
@@ -30,6 +34,37 @@ fn auth_test_object_id() -> String {
     std::env::var("HELIXTEST_AUTH_OBJECT_ID").unwrap_or_else(|_| "test-object-1".to_owned())
 }
 
+/// `HELIXTEST_AUTH_SURFACE=service-info`: HMAC checks hit DRS `/service-info` (published
+/// edge SQLite has no `test-object-1`; service-info is public without a Bearer but rejects
+/// a garbage/expired JWT). Default remains object GET (demo/pilot with seeded DRS).
+fn service_info_surface() -> bool {
+    std::env::var("HELIXTEST_AUTH_SURFACE")
+        .map(|v| v.eq_ignore_ascii_case("service-info"))
+        .unwrap_or(false)
+}
+
+fn hmac_target_url(cfg: &TestConfig) -> String {
+    let drs = cfg.services.drs_url.trim_end_matches('/');
+    if service_info_surface() {
+        format!("{drs}/service-info")
+    } else {
+        format!("{drs}/objects/{}", auth_test_object_id())
+    }
+}
+
+fn skip_service_info_object_only(name: &str, reason: &str) -> Option<TestCaseResult> {
+    if service_info_surface() {
+        Some(TestCaseResult::skip(
+            name,
+            ComplianceLevel::Level4,
+            TestCategory::Security,
+            reason,
+        ))
+    } else {
+        None
+    }
+}
+
 fn token_only_mode(cfg: &TestConfig) -> bool {
     cfg.auth_checks
         .mode
@@ -56,6 +91,7 @@ pub async fn run_auth_checks(
     tests.push(level0_auth_url(cfg, client).await);
     tests.push(level4_valid_token_grants_access(cfg, client).await);
     tests.push(level4_expired_token_rejected(cfg, client).await);
+    tests.push(level4_garbage_bearer_rejected(cfg, client).await);
     tests.push(level4_wrong_scope_denied(cfg, client).await);
     tests.push(level4_missing_token_returns_401(cfg, client).await);
 
@@ -96,11 +132,7 @@ async fn level4_valid_token_grants_access(cfg: &TestConfig, client: &HttpClient)
             Duration::minutes(5),
             &secret,
         )?;
-        let url = format!(
-            "{}/objects/{}",
-            cfg.services.drs_url.trim_end_matches('/'),
-            auth_test_object_id()
-        );
+        let url = hmac_target_url(cfg);
         let resp = client.inner().get(&url).bearer_auth(&token).send().await?;
         anyhow::ensure!(
             resp.status().is_success(),
@@ -256,11 +288,7 @@ async fn level4_expired_token_rejected(cfg: &TestConfig, client: &HttpClient) ->
             Duration::minutes(-5),
             &secret,
         )?;
-        let url = format!(
-            "{}/objects/{}",
-            cfg.services.drs_url.trim_end_matches('/'),
-            auth_test_object_id()
-        );
+        let url = hmac_target_url(cfg);
         let resp = client.inner().get(&url).bearer_auth(&token).send().await?;
         anyhow::ensure!(
             resp.status().is_client_error(),
@@ -279,8 +307,43 @@ async fn level4_expired_token_rejected(cfg: &TestConfig, client: &HttpClient) ->
     )
 }
 
+async fn level4_garbage_bearer_rejected(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
+    const NAME: &str = "Auth (HMAC JWT fixture): garbage bearer rejected";
+    if hmac_secret().is_none() {
+        return skip_hmac_fixture(NAME);
+    }
+    let result = async {
+        let url = hmac_target_url(cfg);
+        let resp = client
+            .inner()
+            .get(&url)
+            .bearer_auth("not-a-jwt")
+            .send()
+            .await?;
+        anyhow::ensure!(
+            resp.status() == 401,
+            "Garbage Bearer must return 401, got {}",
+            resp.status()
+        );
+        Ok::<(), anyhow::Error>(())
+    }
+    .await;
+    TestCaseResult::from_outcome(
+        NAME,
+        ComplianceLevel::Level4,
+        TestCategory::Security,
+        result,
+    )
+}
+
 async fn level4_wrong_scope_denied(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
     const NAME: &str = "Auth (HMAC JWT fixture): wrong scope denied";
+    if let Some(skip) = skip_service_info_object_only(
+        NAME,
+        "HELIXTEST_AUTH_SURFACE=service-info: DRS service-info does not enforce OAuth scopes",
+    ) {
+        return skip;
+    }
     let Some(secret) = hmac_secret() else {
         return skip_hmac_fixture(NAME);
     };
@@ -293,11 +356,7 @@ async fn level4_wrong_scope_denied(cfg: &TestConfig, client: &HttpClient) -> Tes
             Duration::minutes(5),
             &secret,
         )?;
-        let url = format!(
-            "{}/objects/{}",
-            cfg.services.drs_url.trim_end_matches('/'),
-            auth_test_object_id()
-        );
+        let url = hmac_target_url(cfg);
         let resp = client.inner().get(&url).bearer_auth(&token).send().await?;
         anyhow::ensure!(
             resp.status() == 403 || resp.status() == 401,
@@ -317,12 +376,15 @@ async fn level4_wrong_scope_denied(cfg: &TestConfig, client: &HttpClient) -> Tes
 }
 
 async fn level4_missing_token_returns_401(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
+    const NAME: &str = "Auth (HMAC JWT fixture): missing token returns 401";
+    if let Some(skip) = skip_service_info_object_only(
+        NAME,
+        "HELIXTEST_AUTH_SURFACE=service-info: DRS service-info is public metadata (no Bearer → 200); garbage Bearer is still 401",
+    ) {
+        return skip;
+    }
     let result = async {
-        let url = format!(
-            "{}/objects/{}",
-            cfg.services.drs_url.trim_end_matches('/'),
-            auth_test_object_id()
-        );
+        let url = hmac_target_url(cfg);
         let resp = client.inner().get(&url).send().await?;
         anyhow::ensure!(
             resp.status() == 401,
@@ -334,7 +396,7 @@ async fn level4_missing_token_returns_401(cfg: &TestConfig, client: &HttpClient)
     .await;
 
     TestCaseResult::from_outcome(
-        "Auth (HMAC JWT fixture): missing token returns 401",
+        NAME,
         ComplianceLevel::Level4,
         TestCategory::Security,
         result,
@@ -345,6 +407,28 @@ async fn level4_missing_token_returns_401(cfg: &TestConfig, client: &HttpClient)
 mod tests {
     use super::*;
     use common::config::AuthChecksConfig;
+
+    #[test]
+    fn hmac_target_defaults_to_seeded_object() {
+        let cfg = TestConfig {
+            services: common::config::ServiceConfig {
+                wes_url: String::new(),
+                tes_url: String::new(),
+                drs_url: "http://localhost:8080/ga4gh/drs/v1".into(),
+                trs_url: String::new(),
+                beacon_url: String::new(),
+                auth_url: String::new(),
+                htsget_url: None,
+            },
+            subset: common::config::SubsetConfig::default(),
+            auth_checks: AuthChecksConfig::default(),
+        };
+        if service_info_surface() {
+            assert!(hmac_target_url(&cfg).ends_with("/service-info"));
+        } else {
+            assert!(hmac_target_url(&cfg).ends_with("/objects/test-object-1"));
+        }
+    }
 
     #[test]
     fn token_only_mode_detection_works() {

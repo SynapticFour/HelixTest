@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Live GHCR demo seeds Beacon `chr1:1000 A>T` into the published-edge SQLite so `--only beacon --fail-level 2` is not an empty-DB false negative.
+- Live GHCR auth-on runs `helixtest --only auth` (HMAC on DRS `service-info` via `HELIXTEST_AUTH_SURFACE=service-info`). Curl HS256 remains a pre-check. Not Passport/AAI.
+- HMAC auth suite: `HELIXTEST_AUTH_SURFACE=service-info` for published edge (no `test-object-1`); garbage Bearer still must be 401.
+
 ## [0.1.2] - 2026-08-16
 
 Ferrum CI should pin this tag (`VERSIONS.lock` `HELIXTEST_REF=v0.1.2`). `v0.1.1` remains the previous cut.
