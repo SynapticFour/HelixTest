@@ -128,15 +128,21 @@ pub async fn run_infra(config_profile: Option<&str>) -> anyhow::Result<OverallRe
         .await
     {
         Ok(v) if v.get("id").is_some() => {
-            tests.push(pass("infra: broker service-info", TestCategory::Schema));
+            tests.push(TestCaseResult::pass(
+                "infra: broker service-info",
+                ComplianceLevel::Level0,
+                TestCategory::Schema,
+            ));
         }
-        Ok(_) => tests.push(fail(
+        Ok(_) => tests.push(TestCaseResult::fail(
             "infra: broker service-info",
+            ComplianceLevel::Level0,
             TestCategory::Schema,
             "missing id field",
         )),
-        Err(e) => tests.push(fail(
+        Err(e) => tests.push(TestCaseResult::fail(
             "infra: broker service-info",
+            ComplianceLevel::Level0,
             TestCategory::Schema,
             format!("ga4gh-infra broker not reachable: {e}"),
         )),

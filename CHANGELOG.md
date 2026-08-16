@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- ferrum+infra login: mock-idp `/oauth/authorize` is fetched with redirect-follow off. Default reqwest followed the 302 to broker `/callback` without the RP cookie and reported 401, which is not an IdP failure.
+- ferrum+infra `--fail-level 2`: broker `service-info` is Level 0. All five infra checks can pass while overall level stays 0 (no L0 executed), so CI exits 1. Not a DRS 403.
+- JSON reports: tracing goes to stderr so stdout is parseable JSON.
 - Live GHCR demo default image is GHCR `:edge` (latest main), not tag `v0.3.1-edge`. That tag lacks official Beacon boolean `meta` (`beaconId`, `responseSummary`, …); HelixTest v0.1.2 fail-level 2 is a real schema miss on the frozen tag, not a bind-mount flake.
 - Live GHCR auth-on runs `helixtest --only auth` (HMAC on DRS `service-info` via `HELIXTEST_AUTH_SURFACE=service-info`). Curl HS256 remains a pre-check. Not Passport/AAI.
 - HMAC auth suite: `HELIXTEST_AUTH_SURFACE=service-info` for published edge (no `test-object-1`); garbage Bearer still must be 401.

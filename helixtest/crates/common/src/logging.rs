@@ -24,6 +24,7 @@ pub fn init_logging_verbose(verbose: bool) {
             .with_env_filter(filter)
             .with_target(true)
             .with_timer(fmt::time::uptime())
+            .with_writer(std::io::stderr)
             .init();
     });
 }
