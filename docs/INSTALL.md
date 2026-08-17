@@ -33,9 +33,9 @@ Point the CLI at a running target (env vars / profile — see [PROVE.md](PROVE.m
 
 ## Public proof against published Ferrum
 
-Opt-in (does not run on every PR): GitHub Actions workflow **Live Ferrum GHCR** (`workflow_dispatch`, plus a weekly schedule) pulls `ghcr.io/synapticfour/ferrum:v0.3.1-edge`, starts it **auth-off / SQLite demo-mode**, and runs HelixTest. That is the public claim that a tagged Ferrum image answers Beacon/DRS HTTP — not a hospital auth-on proof, and not the Demo overlay path.
+Opt-in (does not run on every PR): GitHub Actions workflow **Live Ferrum GHCR** (`workflow_dispatch`, plus a weekly schedule) pulls `ghcr.io/synapticfour/ferrum:edge` (HEAD publish), starts it **auth-off / SQLite demo-mode**, and runs HelixTest. Tag `v0.3.1-edge` is schema-behind Beacon boolean `meta` — do not use it as the default. Not a hospital auth-on proof, and not the Demo overlay path.
 
-**Published image, auth on (HS256):** workflow **Live Ferrum GHCR auth-on** starts the **same** default image with `FERRUM_AUTH__REQUIRE_AUTH=true` and a minted secret. It proves garbage Bearer → 401 and a valid HS256 JWT → 200 on DRS `service-info`. That matches Ferrum `make eval`. It is **not** ga4gh-infra Passports (Ferrum workflow `helixtest-ferrum-infra.yml`). The demo Live GHCR default is unchanged.
+**Published image, auth on (HS256):** workflow **Live Ferrum GHCR auth-on** starts the **same** `:edge` default with `FERRUM_AUTH__REQUIRE_AUTH=true` and a minted secret. It proves garbage Bearer → 401 and a valid HS256 JWT → 200 on DRS `service-info`. That matches Ferrum `make eval`. It is **not** ga4gh-infra Passports (Ferrum workflow `helixtest-ferrum-infra.yml`).
 
 **Co-deploy (Ferrum + ga4gh-infra):** pin Ferrum **v0.3.1** and **ga4gh-infra-v0.2.3** (same as Ferrum `VERSIONS.lock`). Local: Ferrum `make up-pilot-local` then `helixtest --all --mode ferrum+infra --profile ferrum-infra-pilot`. Hosted proof: Ferrum workflow **ferrum+infra (HelixTest)** (`helixtest-ferrum-infra.yml`, schedule + dispatch). Not GA4GH certification.
 

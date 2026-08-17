@@ -13,7 +13,7 @@ on:
       ferrum_image:
         description: "Full GHCR image reference"
         required: true
-        default: "ghcr.io/synapticfour/ferrum:v0.3.1-edge"
+        default: "ghcr.io/synapticfour/ferrum:edge"
 
 concurrency:
   group: live-ferrum-ghcr-auth
@@ -48,12 +48,12 @@ jobs:
 
       - name: Pull published Ferrum
         env:
-          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:v0.3.1-edge' }}
+          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:edge' }}
         run: docker pull "$FERRUM_IMAGE"
 
       - name: Start Ferrum edge (SQLite, require_auth HS256)
         env:
-          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:v0.3.1-edge' }}
+          FERRUM_IMAGE: ${{ github.event.inputs.ferrum_image || 'ghcr.io/synapticfour/ferrum:edge' }}
         run: |
           docker run -d --name ferrum-live-auth --user 65532:65532 \
             -p 8080:8080 \
