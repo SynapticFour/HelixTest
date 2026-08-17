@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON reports: tracing goes to stderr so stdout is parseable JSON.
 - Live GHCR **auth-on** default image is GHCR `:edge` (same as demo Live GHCR). Tag `v0.3.1-edge` stays schema-behind Beacon boolean `meta`; do not use it as the ambassador default.
 - Live GHCR demo default image is GHCR `:edge` (latest main), not tag `v0.3.1-edge`. That tag lacks official Beacon boolean `meta` (`beaconId`, `responseSummary`, …); HelixTest v0.1.2 fail-level 2 is a real schema miss on the frozen tag, not a bind-mount flake.
+- Live GHCR **schedule** uses `--only beacon` (same as dispatch default). Empty inputs on cron used to run `--all` and fail E2E TRS on :8083, which published edge does not expose.
 - Live GHCR auth-on runs `helixtest --only auth` (HMAC on DRS `service-info` via `HELIXTEST_AUTH_SURFACE=service-info`). Curl HS256 remains a pre-check. Not Passport/AAI.
 - HMAC auth suite: `HELIXTEST_AUTH_SURFACE=service-info` for published edge (no `test-object-1`); garbage Bearer still must be 401.
 

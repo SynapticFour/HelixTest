@@ -118,8 +118,16 @@ jobs:
           GATEWAY_BASE: http://127.0.0.1:8080
           BEACON_URL: http://127.0.0.1:8080/ga4gh/beacon/v2
           DRS_URL: http://127.0.0.1:8080/ga4gh/drs/v1
+          EVENT_NAME: ${{ github.event_name }}
+          ONLY_INPUT: ${{ github.event.inputs.only }}
         run: |
-          ONLY="${{ inputs.only }}"
+          # workflow_dispatch default is beacon. Schedule has no inputs, so
+          # ${{ inputs.only }} is empty and --all used to run E2E against :8083
+          # (TRS) which edge GHCR does not expose → Connection refused.
+          ONLY="$ONLY_INPUT"
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            ONLY="${ONLY:-beacon}"
+          fi
           ARGS=(--all --mode ferrum --report json --fail-level 2)
           if [ -n "$ONLY" ]; then
             ARGS+=(--only "$ONLY")
