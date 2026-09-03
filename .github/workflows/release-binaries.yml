@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing git tag to build and attach (e.g. v0.1.1)"
+        description: "Existing git tag to build and attach (e.g. v0.1.3)"
         required: true
-        default: "v0.1.1"
+        default: "v0.1.3"
 
 permissions:
   contents: write

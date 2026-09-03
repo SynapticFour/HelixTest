@@ -11,15 +11,15 @@ Prefer a GitHub Release asset. Fallback: Cargo (Rust 1.88+; libsodium for the wo
 ```bash
 # Linux x86_64 (sha256 next to the asset). 404 → cargo install below.
 curl -fsSL -o helixtest \
-  https://github.com/SynapticFour/HelixTest/releases/download/v0.1.1/helixtest-x86_64-unknown-linux-gnu
+  https://github.com/SynapticFour/HelixTest/releases/download/v0.1.3/helixtest-x86_64-unknown-linux-gnu
 chmod +x helixtest
 
 # Fallback (needs Rust + libsodium-dev / brew libsodium):
 cargo install --git https://github.com/SynapticFour/HelixTest.git \
-  --tag v0.1.1 --locked --bin helixtest
+  --tag v0.1.3 --locked --bin helixtest
 ```
 
-Attach missing assets: Actions → **Release binaries** → `workflow_dispatch` with tag `v0.1.1`. `cargo binstall` is not published.
+Attach missing assets: Actions → **Release binaries** → `workflow_dispatch` with tag `v0.1.3`. `cargo binstall` is not published.
 
 ## One URL, one report
 
@@ -37,6 +37,6 @@ Opt-in (does not run on every PR): GitHub Actions workflow **Live Ferrum GHCR** 
 
 **Published image, auth on (HS256):** workflow **Live Ferrum GHCR auth-on** starts the **same** `:edge` default with `FERRUM_AUTH__REQUIRE_AUTH=true` and a minted secret. It proves garbage Bearer → 401 and a valid HS256 JWT → 200 on DRS `service-info`. That matches Ferrum `make eval`. It is **not** ga4gh-infra Passports (Ferrum workflow `helixtest-ferrum-infra.yml`).
 
-**Co-deploy (Ferrum + ga4gh-infra):** pin Ferrum **v0.3.1** and **ga4gh-infra-v0.2.3** (same as Ferrum `VERSIONS.lock`). Local: Ferrum `make up-pilot-local` then `helixtest --all --mode ferrum+infra --profile ferrum-infra-pilot`. Hosted proof: Ferrum workflow **ferrum+infra (HelixTest)** (`helixtest-ferrum-infra.yml`, schedule + dispatch). Not GA4GH certification.
+**Co-deploy (Ferrum + ga4gh-infra):** pin Ferrum **v0.3.2** and **ga4gh-infra-v0.2.3** (same as Ferrum `VERSIONS.lock`). Local: Ferrum `make up-pilot-local` then `helixtest --all --mode ferrum+infra --profile ferrum-infra-pilot`. Hosted proof: Ferrum workflow **ferrum+infra (HelixTest)** (`helixtest-ferrum-infra.yml`, dispatch; schedule may be off). Not GA4GH certification.
 
-**GitHub Action for third parties:** [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) wraps the v0.1.1 release binary. Schema source of truth remains the published GA4GH OpenAPI (vendored in this repo).
+**GitHub Action for third parties:** [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) may still wrap **v0.1.1** release binaries. Operators who need Ferrum-suite join pin **this repo v0.1.3**. Schema source of truth remains the published GA4GH OpenAPI (vendored in this repo).

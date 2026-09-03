@@ -8,7 +8,9 @@ Four **products**, two free **ambassadors**, Ferrum **companions**, and **proof*
 
 | Kind | Repository | Role | License |
 |------|------------|------|---------|
-| Ambassador | **HelixTest** (this repo) | Conformance CLI | Apache-2.0 |
+| Ambassador | **HelixTest** (this repo) | Conformance CLI (`helixtest`) | Apache-2.0 |
+| Ambassador | [Helix](https://github.com/SynapticFour/Helix) | VERIFY brand / docs; pin of this suite. Not this git root. | Apache-2.0 |
+| Ambassador | [HELIOS](https://github.com/SynapticFour/HELIOS) | Pipeline audit evidence — not HelixTest | Apache-2.0 |
 | Product | [Ferrum](https://github.com/SynapticFour/Ferrum) | GA4GH data/compute | BUSL-1.1 |
 | Product | [ga4gh-infra](https://github.com/SynapticFour/ga4gh-infra) | Identity plane | Apache-2.0 |
 | With Ferrum | [Ferrum-Lab-Kit](https://github.com/SynapticFour/Ferrum-Lab-Kit) | Subset install | BUSL-1.1 |
@@ -22,7 +24,7 @@ Four **products**, two free **ambassadors**, Ferrum **companions**, and **proof*
 | Data/compute | **Ferrum** | DRS, WES/TES, TRS, Beacon; built-in passports in standalone mode |
 | Deployment | **Ferrum-Lab-Kit** | Selective GA4GH surfaces for labs; does not fork Ferrum |
 | Demo/benchmark | **Ferrum-GA4GH-Demo** | Reproducible GIAB benchmark; optional `--with-infra` |
-| Conformance | **HelixTest** | Automated API and workflow tests |
+| Conformance | **HelixTest** | Automated API and workflow tests. VERIFY brand: [Helix](https://github.com/SynapticFour/Helix). |
 
 HelixTest **validates** implementations; it does not ship GA4GH services. Ferrum runs this suite in CI. See [helixtest/docs/ferrum.md](helixtest/docs/ferrum.md).
 

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Operator pin in `docs/IDENTITY.md` / `docs/INSTALL.md` is git tag **v0.1.3** (SHA `1832c043…`), matching Ferrum `VERSIONS.lock`. The previous IDENTITY text still said v0.1.1. `helixtest-action` may still wrap v0.1.1 binaries — do not treat the action pin as the suite pin.
+- VERIFY brand pointer: [Helix](https://github.com/SynapticFour/Helix). This repo stays HelixTest.
+
 ## [0.1.3] - 2026-08-24
 
 Ferrum CI should pin this tag (`VERSIONS.lock` `HELIXTEST_REF=v0.1.3`). `v0.1.2` remains the previous cut (DRS/Beacon schemas).
