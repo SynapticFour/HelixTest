@@ -42,7 +42,7 @@ use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
-use tracing::{info, warn};
+use tracing::warn;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Mode {
@@ -173,33 +173,9 @@ pub async fn run_all(
     let profile_ref = profile.as_deref();
     let cfg = TestConfig::load(profile_ref)?;
     let client = HttpClient::new();
-    let effective_mode = if let Mode::Generic = mode {
-        let url = format!(
-            "{}/service-info",
-            cfg.services.wes_url.trim_end_matches('/')
-        );
-        if let Ok(v) = client.get_json(&url).await {
-            if v.get("name")
-                .and_then(|n| n.as_str())
-                .map(|s| s.contains("Ferrum"))
-                .unwrap_or(false)
-            {
-                info!(
-                    service = "WES",
-                    "Detected Ferrum in service-info, switching to Ferrum mode"
-                );
-                Mode::Ferrum
-            } else {
-                Mode::Generic
-            }
-        } else {
-            Mode::Generic
-        }
-    } else {
-        mode
-    };
-
-    let features = load_features(effective_mode, profile_ref)?;
+    // Generic stays generic. Ferrum is opt-in (`--mode ferrum` / ferrum-africa / ferrum+infra).
+    // Inferring Ferrum from WES service-info `name` made generic runs look like a Ferrum self-test.
+    let features = load_features(mode, profile_ref)?;
 
     let mut enabled = enabled_services_from_config(&cfg);
     if let Some(only_set) = only {
@@ -233,26 +209,18 @@ pub async fn run_all(
             continue;
         }
         let report = match service {
-            ServiceKind::Wes => {
-                wes::run_wes_checks(effective_mode, &features, &cfg, &client).await?
-            }
-            ServiceKind::Tes => {
-                tes::run_tes_checks(effective_mode, &features, &cfg, &client).await?
-            }
-            ServiceKind::Drs => {
-                drs::run_drs_checks(effective_mode, &features, &cfg, &client).await?
-            }
-            ServiceKind::Trs => {
-                trs::run_trs_checks(effective_mode, &features, &cfg, &client).await?
-            }
+            ServiceKind::Wes => wes::run_wes_checks(mode, &features, &cfg, &client).await?,
+            ServiceKind::Tes => tes::run_tes_checks(mode, &features, &cfg, &client).await?,
+            ServiceKind::Drs => drs::run_drs_checks(mode, &features, &cfg, &client).await?,
+            ServiceKind::Trs => trs::run_trs_checks(mode, &features, &cfg, &client).await?,
             ServiceKind::Beacon => {
-                beacon::run_beacon_checks(effective_mode, &features, &cfg, &client).await?
+                beacon::run_beacon_checks(mode, &features, &cfg, &client).await?
             }
             ServiceKind::Htsget => {
-                htsget::run_htsget_checks(effective_mode, &features, &cfg, &client).await?
+                htsget::run_htsget_checks(mode, &features, &cfg, &client).await?
             }
             ServiceKind::Auth => {
-                if matches!(effective_mode, Mode::Ferrum) && skip_auth {
+                if matches!(mode, Mode::Ferrum) && skip_auth {
                     ServiceReport {
                         service: ServiceKind::Auth,
                         tests: vec![TestCaseResult::skip(
@@ -263,18 +231,14 @@ pub async fn run_all(
                         )],
                     }
                 } else {
-                    auth::run_auth_checks(effective_mode, &features, &cfg, &client).await?
+                    auth::run_auth_checks(mode, &features, &cfg, &client).await?
                 }
             }
-            ServiceKind::Age => {
-                crypt4gh::run_age_checks(effective_mode, &features, &cfg, &client).await?
-            }
+            ServiceKind::Age => crypt4gh::run_age_checks(mode, &features, &cfg, &client).await?,
             ServiceKind::Crypt4gh => {
-                crypt4gh::run_crypt4gh_checks(effective_mode, &features, &cfg, &client).await?
+                crypt4gh::run_crypt4gh_checks(mode, &features, &cfg, &client).await?
             }
-            ServiceKind::E2e => {
-                e2e::run_e2e_checks(effective_mode, &features, &cfg, &client).await?
-            }
+            ServiceKind::E2e => e2e::run_e2e_checks(mode, &features, &cfg, &client).await?,
             ServiceKind::Africa | ServiceKind::Infra => {
                 unreachable!("stripped from enabled before the loop")
             }

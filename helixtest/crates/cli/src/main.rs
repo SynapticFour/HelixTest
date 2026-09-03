@@ -101,15 +101,17 @@ struct Args {
     #[arg(long)]
     all: bool,
 
-    /// Execution mode (generic GA4GH vs Ferrum-native)
+    /// Execution mode. Generic talks only to public GA4GH HTTP APIs.
+    /// Ferrum / ferrum-africa / ferrum+infra are opt-in reference-target profiles.
     #[arg(long, value_enum, default_value_t = Mode::Generic)]
     mode: Mode,
 
-    /// Optionally start a compose stack before running tests (uses CWD or --compose-file)
-    #[arg(long)]
+    /// Start a docker compose stack before running (any target, not Ferrum-specific).
+    /// `--start-ferrum` is kept as the historical flag name; `--start-compose` is the alias.
+    #[arg(long, alias = "start-compose")]
     start_ferrum: bool,
 
-    /// docker compose file for --start-ferrum
+    /// docker compose file for `--start-compose` / `--start-ferrum`
     #[arg(long)]
     compose_file: Option<String>,
 

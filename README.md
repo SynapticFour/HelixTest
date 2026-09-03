@@ -2,6 +2,8 @@
 
 HelixTest is a Rust-based conformance and integration test suite for GA4GH-style platforms. The CLI binary is **`helixtest`**. **Apache-2.0 — not a product SKU.** Synaptic Four publishes it so anyone can probe a GA4GH API, including Ferrum.
 
+Helix tests behavior against the GA4GH spec, independent of implementation. Ferrum is used as a reference target, not a dependency.
+
 > **Not a deployable stack:** HelixTest does not run servers. Start a target first (Ferrum, ga4gh-infra, or both), then run HelixTest against it. See **[docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)** for unified lifecycle commands on sibling repos.
 
 Scope boundary: HelixTest remains **GA4GH-focused**. MII/KDS checks live in Ferrum / Ferrum-Lab-Kit integration layers.
@@ -22,6 +24,14 @@ Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**. CI on `
 ```bash
 # In Ferrum repo: make up
 helixtest --all --mode ferrum
+# Same DRS checks as the mock (reference target):
+helixtest --all --mode ferrum --only drs
+```
+
+**Run against any DRS** (not Ferrum):
+
+```bash
+DRS_URL=http://127.0.0.1:$PORT helixtest --all --mode generic --only drs --profile ga4gh-drs --report json
 ```
 
 **Co-deploy (Ferrum + ga4gh-infra):**

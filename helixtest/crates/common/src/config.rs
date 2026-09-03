@@ -70,6 +70,25 @@ pub struct TestConfig {
 }
 
 impl TestConfig {
+    /// Profiles use a nested `[services]` table (`wes = "..."`, alias of `wes_url`).
+    /// Flat files (`wes_url = "..."`) stay valid. `[features]` / other tables are ignored here.
+    fn parse_toml(data: &str) -> Result<Self> {
+        let mut v: toml::Value =
+            toml::from_str(data).context("Failed to parse TOML configuration")?;
+        if let Some(toml::Value::Table(nested)) =
+            v.as_table_mut().and_then(|t| t.remove("services"))
+        {
+            let root = v
+                .as_table_mut()
+                .ok_or_else(|| anyhow::anyhow!("TOML configuration must be a table"))?;
+            for (k, val) in nested {
+                root.entry(k).or_insert(val);
+            }
+        }
+        v.try_into()
+            .context("Failed to parse TOML configuration into TestConfig")
+    }
+
     fn apply_env_overrides(mut cfg: Self) -> Self {
         if let Ok(v) = env::var("WES_URL") {
             cfg.services.wes_url = v;
@@ -114,8 +133,12 @@ impl TestConfig {
                     profile
                 )
             })?;
-            let cfg: TestConfig =
-                toml::from_str(&data).context("Failed to parse profile TOML configuration")?;
+            let cfg = Self::parse_toml(&data).with_context(|| {
+                format!(
+                    "Failed to parse profile TOML configuration at {}",
+                    path.display()
+                )
+            })?;
             return Ok(Self::apply_env_overrides(cfg));
         }
 
@@ -123,8 +146,9 @@ impl TestConfig {
             let p = Path::new(&path);
             let data = fs::read_to_string(p)
                 .with_context(|| format!("Failed to read config file at {}", p.display()))?;
-            let cfg: TestConfig =
-                toml::from_str(&data).context("Failed to parse TOML configuration")?;
+            let cfg = Self::parse_toml(&data).with_context(|| {
+                format!("Failed to parse TOML configuration at {}", p.display())
+            })?;
             return Ok(Self::apply_env_overrides(cfg));
         }
 
@@ -133,8 +157,12 @@ impl TestConfig {
             let data = fs::read_to_string(default_path).with_context(|| {
                 format!("Failed to read config file at {}", default_path.display())
             })?;
-            let cfg: TestConfig =
-                toml::from_str(&data).context("Failed to parse TOML configuration")?;
+            let cfg = Self::parse_toml(&data).with_context(|| {
+                format!(
+                    "Failed to parse TOML configuration at {}",
+                    default_path.display()
+                )
+            })?;
             return Ok(Self::apply_env_overrides(cfg));
         }
 
@@ -271,5 +299,44 @@ auth_url = "http://file-auth"
             "unexpected error: {}",
             err
         );
+    }
+
+    #[test]
+    fn nested_services_table_loads_urls() {
+        let cfg = TestConfig::parse_toml(
+            r#"
+[services]
+wes = "http://nested-wes"
+drs = "http://nested-drs/ga4gh/drs/v1"
+
+[features]
+strict_drs_checksums = true
+"#,
+        )
+        .unwrap();
+        assert_eq!(cfg.services.wes_url, "http://nested-wes");
+        assert_eq!(cfg.services.drs_url, "http://nested-drs/ga4gh/drs/v1");
+    }
+
+    #[test]
+    fn ferrum_profile_loads_gateway_drs_url() {
+        let _g = ENV_LOCK.lock().unwrap();
+        clear_env();
+        let cfg = TestConfig::load(Some("ferrum")).unwrap();
+        assert_eq!(
+            cfg.services.drs_url, "http://localhost:8080/ga4gh/drs/v1",
+            "profiles/ferrum.toml [services] must be the DRS base without extra env"
+        );
+        assert_eq!(cfg.services.wes_url, "http://localhost:8080/ga4gh/wes/v1");
+    }
+
+    #[test]
+    fn env_overrides_nested_services_profile() {
+        let _g = ENV_LOCK.lock().unwrap();
+        clear_env();
+        set_env("DRS_URL", "http://env-drs");
+        let cfg = TestConfig::load(Some("ferrum")).unwrap();
+        assert_eq!(cfg.services.drs_url, "http://env-drs");
+        assert_eq!(cfg.services.wes_url, "http://localhost:8080/ga4gh/wes/v1");
     }
 }

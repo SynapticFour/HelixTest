@@ -4,6 +4,8 @@
 
 HelixTest is a Rust-based conformance framework for GA4GH APIs and workflow platforms. It focuses on strict validation, cross-service interoperability, and security/robustness. It is **CI-ready** (exit codes, JSON reports, `--fail-level`), **usable by any GA4GH-compliant platform** (config-driven endpoints, profiles), and suitable as a **reference conformance suite** for the GA4GH ecosystem: test cases and compliance levels align with GA4GH service specifications and can be used as a reference when building or validating compliant implementations.
 
+Helix tests behavior against the GA4GH spec, independent of implementation. Ferrum is used as a reference target, not a dependency.
+
 **Non-goal:** HelixTest is **not** a performance benchmark suite. Pass/fail and `--fail-level` reflect **spec conformance**, not wall-time, throughput, or latency. Optional JSON diagnostics (e.g. `HELIXTEST_REPORT_DIAGNOSTICS`) are for troubleshooting only and do **not** affect levels or scores. See **[docs/conformance-philosophy.md](docs/conformance-philosophy.md)**.
 
 HelixTest currently targets:
@@ -157,7 +159,7 @@ From the **repository root** (`HelixTest/`; single Cargo workspace):
 cargo run --bin helixtest -- --all
 ```
 
-**Options:** `--report table|json|scores|coverage` (default: table), `--mode generic|ferrum|ferrum-africa|ferrum+infra`, `--profile <name>`, `--start-ferrum` (polls WES `/service-info`; optional `--compose-file`, else `helixtest/docker/docker-compose.yml` if present), `--fail-level <N>`, `--only <service>` (repeatable: `wes`, `tes`, `drs`, `trs`, `beacon`, `htsget`, `auth`, `age`, `crypt4gh`, `e2e`, `africa`, `infra`), `--verbose`.
+**Options:** `--report table|json|scores|coverage` (default: table), `--mode generic|ferrum|ferrum-africa|ferrum+infra`, `--profile <name>`, `--start-compose` (alias `--start-ferrum`; polls WES `/service-info`; optional `--compose-file`, else `helixtest/docker/docker-compose.yml` if present), `--fail-level <N>`, `--only <service>` (repeatable: `wes`, `tes`, `drs`, `trs`, `beacon`, `htsget`, `auth`, `age`, `crypt4gh`, `e2e`, `africa`, `infra`), `--verbose`.
 
 **Optional JSON diagnostics (not scored):** `HELIXTEST_REPORT_DIAGNOSTICS=true` or `1` adds fields such as `suite_duration_ms` to the full JSON report (`--report json`); compliance levels and scores are unchanged.
 
@@ -168,7 +170,8 @@ cargo run --bin helixtest -- --all --report table
 cargo run --bin helixtest -- --all --report json > helix-report.json
 cargo run --bin helixtest -- --all --report scores
 cargo run --bin helixtest -- --all --fail-level 3
-cargo run --bin helixtest -- --all --mode ferrum --start-ferrum
+cargo run --bin helixtest -- --all --mode ferrum --start-compose
+DRS_URL=http://127.0.0.1:8082 cargo run --bin helixtest -- --all --mode generic --only drs --profile ga4gh-drs --report json
 cargo run --bin helixtest -- --all --profile bioresearch-assistant --report json
 ```
 
@@ -274,7 +277,7 @@ New tests are added in the framework (`crates/framework`) and tagged with a comp
 HelixTest has first-class support for testing **Ferrum**, a Rust-based GA4GH platform:
 
 - Mode selection: `--mode ferrum`.
-- Optional auto-start via Docker: `--start-ferrum` (compose file `helixtest/docker/docker-compose.yml` or `--compose-file`; waits for WES `/service-info`).
+- Optional auto-start via Docker: `--start-compose` / `--start-ferrum` (compose file `helixtest/docker/docker-compose.yml` or `--compose-file`; waits for WES `/service-info`).
 - Feature flags via `profiles/ferrum.toml` to:
   - Enable/disable scatter/gather workflow checks.
   - Enable/disable Beacon v2 tests.

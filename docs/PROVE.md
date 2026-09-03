@@ -1,6 +1,6 @@
 # Prove HelixTest without a running platform
 
-`make prove` is the zero-risk path: **offline** workspace tests and a release CLI build. No Docker, no Ferrum.
+`make prove` is the zero-risk path: **offline** workspace tests (including a mock GA4GH DRS, not Ferrum) and a release CLI build. No Docker, no Ferrum.
 
 ```bash
 git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest

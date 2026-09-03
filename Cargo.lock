@@ -1117,6 +1117,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+ "wiremock",
 ]
 
 [[package]]
@@ -1164,6 +1165,7 @@ dependencies = [
  "toml 0.8.23",
  "tracing",
  "url",
+ "wiremock",
 ]
 
 [[package]]

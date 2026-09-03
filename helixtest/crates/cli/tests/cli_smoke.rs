@@ -13,6 +13,17 @@ fn help_includes_project_name() {
 }
 
 #[test]
+fn help_includes_start_compose_alias() {
+    Command::cargo_bin("helixtest")
+        .unwrap()
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--start-compose"))
+        .stdout(predicate::str::contains("--start-ferrum"));
+}
+
+#[test]
 fn version_prints() {
     Command::cargo_bin("helixtest")
         .unwrap()

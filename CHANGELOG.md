@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- In-process mock GA4GH DRS (not Ferrum) plus CI tests so generic DRS checks run against any DRS HTTP target. Profile `ga4gh-drs` enables the same five DRS checks as Ferrum (`strict_drs_checksums`).
+- `--start-compose` as alias for `--start-ferrum` (compose start is not Ferrum-specific).
+
+### Fixed
+
+- Profile TOML `[services]` tables (`ferrum.toml`, `ga4gh-drs.toml`, …) are loaded as endpoint URLs. `--profile ferrum` no longer built relative `/objects/…` URLs.
+
 ### Changed
 
+- `--mode generic` no longer switches to Ferrum when WES `/service-info` `name` contains `"Ferrum"`. Ferrum remains opt-in (`--mode ferrum*`).
 - Operator pin in `docs/IDENTITY.md` / `docs/INSTALL.md` is git tag **v0.1.3** (SHA `1832c043…`), matching Ferrum `VERSIONS.lock`. The previous IDENTITY text still said v0.1.1. `helixtest-action` may still wrap v0.1.1 binaries — do not treat the action pin as the suite pin.
 - VERIFY brand pointer: [Helix](https://github.com/SynapticFour/Helix). This repo stays HelixTest.
 

@@ -1,6 +1,6 @@
 # Testing Ferrum with HelixTest
 
-This guide describes how to run the HelixTest conformance suite against **Ferrum**, a Rust-based GA4GH platform.
+This guide describes how to run the HelixTest conformance suite against **Ferrum**, a Rust-based GA4GH platform. Helix tests behavior against the GA4GH spec, independent of implementation. Ferrum is used as a reference target, not a dependency.
 
 **HelixTest** (this repo) is the **automated conformance suite**; it does not choose Ferrum’s TES backend. Synaptic Four **CI** typically runs Ferrum with **noop TES** for speed; **GA4GH demos** and serious self-hosts often need **Docker TES** with extra env and compose wiring. See **[ADR 0001: Ferrum TES & DB init](adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md)** for the split, env reference, and **`ferrum-init` / Postgres volume** expectations (including when `docker compose down -v` is required).
 
@@ -18,7 +18,7 @@ This guide describes how to run the HelixTest conformance suite against **Ferrum
    ```
    Or let the CLI start it:
    ```bash
-   helixtest --all --mode ferrum --start-ferrum
+   helixtest --all --mode ferrum --start-compose
    ```
 
 3. **Run the suite**:

@@ -4,6 +4,8 @@ HelixTest (`helixtest`) is a **free Apache-2.0 ambassador**: a conformance CLI y
 
 The VERIFY brand around this suite is [Helix](https://github.com/SynapticFour/Helix) (docs / later wrapper). This git root stays **HelixTest**. Not HELIOS (reproducibility / signed evidence).
 
+Helix tests behavior against the GA4GH spec, independent of implementation. Ferrum is used as a reference target, not a dependency.
+
 ## Audience
 
 Anyone implementing or buying a GA4GH API — including Ferrum, including competitors.

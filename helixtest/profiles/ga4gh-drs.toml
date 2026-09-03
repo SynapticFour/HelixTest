@@ -1,0 +1,16 @@
+# GA4GH DRS-only profile for any DRS implementer (not Ferrum-specific).
+# Override `drs` with DRS_URL. Enables checksum so generic and Ferrum DRS
+# execute the same DRS checks (L0 reachable, L1 OpenAPI, L2 checksum + Range, L5 404).
+[services]
+wes = "http://127.0.0.1:9"
+tes = "http://127.0.0.1:9"
+drs = "http://127.0.0.1:9"
+trs = "http://127.0.0.1:9"
+beacon = "http://127.0.0.1:9"
+auth = "http://127.0.0.1:9"
+
+[subset]
+enabled_services = ["drs"]
+
+[features]
+strict_drs_checksums = true
