@@ -31,3 +31,18 @@ helixtest --all --mode ferrum+infra --profile ferrum-infra
 ```
 
 Results are not GA4GH certification. Known gaps: [helixtest/docs/known-limitations.md](../helixtest/docs/known-limitations.md).
+
+## `--start-compose` / `--start-ferrum` (default compose file)
+
+**Do not rely on** `helixtest --start-ferrum` / `--start-compose` with the default file `helixtest/docker/docker-compose.yml` until those images are replaced. See D2 in Helix `docs/DECISIONS.md` and `INVENTORY.md`.
+
+That file lists `ghcr.io/example/mock-{wes,tes,drs,trs,beacon,oidc}:latest`. Checked **2026-09-04** with Docker **29.7.2**: `docker manifest inspect <image>` returned `manifest unknown` for every tag. (`docker pull --dry-run` is not available on this client.)
+
+Re-check (human with Docker):
+
+```bash
+docker manifest inspect ghcr.io/example/mock-wes:latest
+# expected while placeholders remain: errors with "manifest unknown"
+```
+
+Offline proof stays `make prove` (in-process mock DRS, not this compose file). Live proof is a stack **you** start (Ferrum `make up`, Demo, or `--compose-file` pointing at images you can pull).

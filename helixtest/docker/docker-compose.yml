@@ -1,3 +1,12 @@
+# UNVERIFIED PLACEHOLDER IMAGES — do not rely on `--start-ferrum` /
+# `--start-compose` with this file until these are replaced. See D2 in
+# Helix/docs/DECISIONS.md and INVENTORY.md.
+#
+# Checked 2026-09-04 (Docker 29.7.2): `docker manifest inspect` on each
+# `ghcr.io/example/mock-{wes,tes,drs,trs,beacon,oidc}:latest` returned
+# `manifest unknown`. `docker pull --dry-run` is not available on this client.
+# Re-check: `docker manifest inspect ghcr.io/example/mock-wes:latest`
+
 version: "3.9"
 
 services:
@@ -50,4 +59,3 @@ services:
       - OIDC_PORT=8080
     ports:
       - "8086:8080"
-

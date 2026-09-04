@@ -106,12 +106,18 @@ struct Args {
     #[arg(long, value_enum, default_value_t = Mode::Generic)]
     mode: Mode,
 
-    /// Start a docker compose stack before running (any target, not Ferrum-specific).
-    /// `--start-ferrum` is kept as the historical flag name; `--start-compose` is the alias.
+    /// Start docker compose before the run. `--start-compose` is the same flag;
+    /// `--start-ferrum` is the historical name (it does **not** start Ferrum).
+    /// Default `helixtest/docker/docker-compose.yml` uses unverified
+    /// `ghcr.io/example/mock-*` placeholders — do not rely on `--start-ferrum` /
+    /// `--start-compose` with that file until the images are replaced (see D2 in
+    /// Helix/docs/DECISIONS.md and INVENTORY.md). Pass `--compose-file` for a
+    /// compose file whose images you can actually pull.
     #[arg(long, alias = "start-compose")]
     start_ferrum: bool,
 
-    /// docker compose file for `--start-compose` / `--start-ferrum`
+    /// Compose file for `--start-compose` / `--start-ferrum`. Omit = default
+    /// `helixtest/docker/docker-compose.yml` if present (unverified placeholders).
     #[arg(long)]
     compose_file: Option<String>,
 

@@ -20,7 +20,9 @@ fn help_includes_start_compose_alias() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--start-compose"))
-        .stdout(predicate::str::contains("--start-ferrum"));
+        .stdout(predicate::str::contains("--start-ferrum"))
+        .stdout(predicate::str::contains("unverified"))
+        .stdout(predicate::str::contains("ghcr.io/example/mock-*"));
 }
 
 #[test]
