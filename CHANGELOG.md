@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `--mode generic` no longer switches to Ferrum when WES `/service-info` `name` contains `"Ferrum"`. Ferrum remains opt-in (`--mode ferrum*`).
 - Documented that default `--start-compose` / `--start-ferrum` compose (`helixtest/docker/docker-compose.yml`) uses **unverified** `ghcr.io/example/mock-*` images. 2026-09-04, Docker 29.7.2: `docker manifest inspect` → `manifest unknown` for wes/tes/drs/trs/beacon/oidc. Not a working mock stack. Stage 0 non-Ferrum proof remains the in-process wiremock DRS (Helix D2).
-- Operator pin in `docs/IDENTITY.md` / `docs/INSTALL.md` is git tag **v0.1.3** (SHA `1832c043…`), matching Ferrum `VERSIONS.lock`. The previous IDENTITY text still said v0.1.1. `helixtest-action` may still wrap v0.1.1 binaries — do not treat the action pin as the suite pin.
+- Operator pin in `docs/IDENTITY.md` / `docs/INSTALL.md` is git tag **v0.1.3** (SHA `1832c043…`), matching Ferrum `VERSIONS.lock`. The previous IDENTITY text still said v0.1.1. `helixtest-action` default binaries are **v0.1.2** — do not treat the action pin as the suite pin. Helix (`helix verify`) is the VERIFY brand; this git root stays HelixTest.
 - VERIFY brand pointer: [Helix](https://github.com/SynapticFour/Helix). This repo stays HelixTest.
 
 ## [0.1.3] - 2026-08-24

@@ -2,7 +2,7 @@
 
 HelixTest (`helixtest`) is a **free Apache-2.0 ambassador**: a conformance CLI you point at a running GA4GH target. It is **not** a product SKU and **not** a server.
 
-The VERIFY brand around this suite is [Helix](https://github.com/SynapticFour/Helix) (docs / later wrapper). This git root stays **HelixTest**. Not HELIOS (reproducibility / signed evidence).
+The VERIFY brand around this suite is [Helix](https://github.com/SynapticFour/Helix) (`helix verify` / `security` / `bench`). This git root stays **HelixTest** (`helixtest`). Ferrum CI still pins **this repo’s git tag v0.1.3**. Not HELIOS (reproducibility / signed evidence).
 
 Helix tests behavior against the GA4GH spec, independent of implementation. Ferrum is used as a reference target, not a dependency.
 
@@ -27,7 +27,7 @@ helixtest --all --mode ferrum+infra --profile ferrum-infra
 helixtest --all --mode ferrum+infra --profile ferrum-infra-pilot   # Ferrum make up-pilot-local (:8080)
 ```
 
-Third-party GitHub Actions: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action). The action README still describes **v0.1.1** binaries; Ferrum / Lab Kit / ga4gh-infra (and Helix `VERSIONS.lock`) pin **this repo’s git tag v0.1.3**. The action does not start Ferrum.
+Third-party GitHub Actions: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) ships **v0.1.2** binaries (action default). Ferrum / Lab Kit / ga4gh-infra (and Helix `VERSIONS.lock`) pin **this repo’s git tag v0.1.3**. The action does not start Ferrum. Stage 2 wrapper for `helix verify` is [helix-action](https://github.com/SynapticFour/helix-action) (not on Ferrum `main`).
 
 Results are **not** official GA4GH certification. Product pin is git tag **v0.1.3** (`1832c043e1679ec283cb2113510ee33684317cce`) — same SHA as Ferrum `VERSIONS.lock`. The CLI crate `version` in `Cargo.toml` may stay `0.1.0`; operators pin the **tag**, not the crate number.
 

@@ -9,7 +9,7 @@ Four **products**, two free **ambassadors**, Ferrum **companions**, and **proof*
 | Kind | Repository | Role | License |
 |------|------------|------|---------|
 | Ambassador | **HelixTest** (this repo) | Conformance CLI (`helixtest`) | Apache-2.0 |
-| Ambassador | [Helix](https://github.com/SynapticFour/Helix) | VERIFY brand / docs; pin of this suite. Not this git root. | Apache-2.0 |
+| Ambassador | [Helix](https://github.com/SynapticFour/Helix) | VERIFY brand (`helix verify`); same ambassador line as this CLI. Not this git root. | Apache-2.0 |
 | Ambassador | [HELIOS](https://github.com/SynapticFour/HELIOS) | Pipeline audit evidence — not HelixTest | Apache-2.0 |
 | Product | [Ferrum](https://github.com/SynapticFour/Ferrum) | GA4GH data/compute | BUSL-1.1 |
 | Product | [ga4gh-infra](https://github.com/SynapticFour/ga4gh-infra) | Identity plane | Apache-2.0 |
