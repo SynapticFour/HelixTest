@@ -39,4 +39,4 @@ Opt-in (does not run on every PR): GitHub Actions workflow **Live Ferrum GHCR** 
 
 **Co-deploy (Ferrum + ga4gh-infra):** pin Ferrum **v0.3.2** and **ga4gh-infra-v0.2.3** (same as Ferrum `VERSIONS.lock`). Local: Ferrum `make up-pilot-local` then `helixtest --all --mode ferrum+infra --profile ferrum-infra-pilot`. Hosted proof: Ferrum workflow **ferrum+infra (HelixTest)** (`helixtest-ferrum-infra.yml`, dispatch; schedule may be off). Not GA4GH certification.
 
-**GitHub Action for third parties:** [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) may still wrap **v0.1.1** release binaries. Operators who need Ferrum-suite join pin **this repo v0.1.3**. Schema source of truth remains the published GA4GH OpenAPI (vendored in this repo).
+**GitHub Action for third parties:** [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) default binaries are **v0.1.3** (same as this repo’s suite pin). Schema source of truth remains the published GA4GH OpenAPI (vendored in this repo).

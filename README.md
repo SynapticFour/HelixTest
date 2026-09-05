@@ -2,7 +2,7 @@
 
 HelixTest is a Rust-based conformance and integration test suite for GA4GH-style platforms. The CLI binary is **`helixtest`**. **Apache-2.0 — not a product SKU.** Synaptic Four publishes it so anyone can probe a GA4GH API, including Ferrum.
 
-Helix tests behavior against the GA4GH spec, independent of implementation. Ferrum is used as a reference target, not a dependency.
+HelixTest tests behavior against the GA4GH spec, independent of implementation. The CLI binary is **`helixtest`**. The VERIFY brand around this suite is [Helix](https://github.com/SynapticFour/Helix) (binary `helix`). Not HELIOS. Not GA4GH certification. Ferrum is used as a reference target, not a dependency.
 
 > **Not a deployable stack:** HelixTest does not run servers. Start a target first (Ferrum, ga4gh-infra, or both), then run HelixTest against it. See **[docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)** for unified lifecycle commands on sibling repos.
 
@@ -17,7 +17,7 @@ git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest
 make prove
 ```
 
-Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**. CI on `main` / PRs runs the same `make prove` (offline tests + release CLI; live-stack crates excluded). Third-party GitHub Actions: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) (action binaries may still be v0.1.1; suite pin is **v0.1.3**; does not start Ferrum). VERIFY brand: [Helix](https://github.com/SynapticFour/Helix).
+Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**. CI on `main` / PRs runs the same `make prove` (offline tests + release CLI; live-stack crates excluded). Third-party GitHub Actions: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) (default binaries **v0.1.3**, same as the suite pin; does not start Ferrum). VERIFY brand: [Helix](https://github.com/SynapticFour/Helix).
 
 **Run against a local Ferrum demo** (start Ferrum first — see [Ferrum README](https://github.com/SynapticFour/Ferrum)):
 

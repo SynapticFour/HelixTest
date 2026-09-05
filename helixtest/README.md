@@ -4,7 +4,7 @@
 
 HelixTest is a Rust-based conformance framework for GA4GH APIs and workflow platforms. It focuses on strict validation, cross-service interoperability, and security/robustness. It is **CI-ready** (exit codes, JSON reports, `--fail-level`), **usable by any GA4GH-compliant platform** (config-driven endpoints, profiles), and suitable as a **reference conformance suite** for the GA4GH ecosystem: test cases and compliance levels align with GA4GH service specifications and can be used as a reference when building or validating compliant implementations.
 
-Helix tests behavior against the GA4GH spec, independent of implementation. Ferrum is used as a reference target, not a dependency.
+HelixTest tests behavior against the GA4GH spec, independent of implementation. The CLI binary is **`helixtest`**. The VERIFY brand around this suite is [Helix](https://github.com/SynapticFour/Helix) (binary `helix`). Not HELIOS. Not GA4GH certification. Ferrum is used as a reference target, not a dependency.
 
 **Non-goal:** HelixTest is **not** a performance benchmark suite. Pass/fail and `--fail-level` reflect **spec conformance**, not wall-time, throughput, or latency. Optional JSON diagnostics (e.g. `HELIXTEST_REPORT_DIAGNOSTICS`) are for troubleshooting only and do **not** affect levels or scores. See **[docs/conformance-philosophy.md](docs/conformance-philosophy.md)**.
 
