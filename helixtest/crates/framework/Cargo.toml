@@ -26,5 +26,8 @@ crypt4gh = { workspace = true }
 base64 = { workspace = true }
 bytes = "1"
 
+[build-dependencies]
+sha2 = "0.10"
+
 [dev-dependencies]
 wiremock = "0.6"
