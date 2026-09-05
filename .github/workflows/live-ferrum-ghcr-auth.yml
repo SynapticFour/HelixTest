@@ -6,8 +6,9 @@
 name: Live Ferrum GHCR auth-on
 
 on:
-  schedule:
-    - cron: "27 4 * * 1"
+  # Paused 2026-09 for development freeze; re-enable after pause; do not bump Ferrum Lab Kit to main.
+  # schedule:
+  #   - cron: "27 4 * * 1"
   workflow_dispatch:
     inputs:
       ferrum_image:
