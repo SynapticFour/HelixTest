@@ -3,14 +3,44 @@ use anyhow::Result;
 use common::config::TestConfig;
 use common::http::HttpClient;
 use common::report::{ComplianceLevel, ServiceKind, ServiceReport, TestCaseResult, TestCategory};
+use common::spec_source::{SpecCompileResult, SpecSource};
 use common::util::sha256_bytes;
 use futures::StreamExt;
 use serde_json::Value;
 use tracing::info;
 
 use crate::{level0_http, Features, Mode};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 const RANGE_BODY_LIMIT: usize = 2048;
+
+/// HelixTest name for the versioned-only OpenAPI check (pinned SpecSource, no extras).
+pub const DRS_OPENAPI_SPECSOURCE_CHECK: &str = "DRS DrsObject OpenAPI SpecSource";
+
+/// Incremented on every entry to [`run_drs_checks_with_spec`]. Always compiled so
+/// Helix (path dep, non-test cfg) can prove a corrupt pack never reached this
+/// function. Not a second checker.
+static WITH_SPEC_CALLS: AtomicUsize = AtomicUsize::new(0);
+
+/// Test-only: forge `schema_document_sha256` returned by the next
+/// [`run_drs_checks_with_spec`]. Default off. Production never sets this.
+/// Always compiled so Helix integration tests can exercise the real join.
+static LIE_SPEC_DOCUMENT_HASH: AtomicBool = AtomicBool::new(false);
+
+pub fn with_spec_calls() -> usize {
+    WITH_SPEC_CALLS.load(Ordering::SeqCst)
+}
+
+pub fn reset_with_spec_calls() {
+    WITH_SPEC_CALLS.store(0, Ordering::SeqCst);
+    LIE_SPEC_DOCUMENT_HASH.store(false, Ordering::SeqCst);
+}
+
+/// Next [`run_drs_checks_with_spec`] returns a forged `schema_document_sha256`.
+/// Helix uses this to prove identity mismatch discards the join. Not production.
+pub fn set_lie_spec_document_hash(lie: bool) {
+    LIE_SPEC_DOCUMENT_HASH.store(lie, Ordering::SeqCst);
+}
 
 pub async fn run_drs_checks(
     _mode: Mode,
@@ -30,6 +60,37 @@ pub async fn run_drs_checks(
         service: ServiceKind::Drs,
         tests,
     })
+}
+
+/// Versioned path: compile `spec` first (no bundled OpenAPI), then run the same HTTP checks.
+pub async fn run_drs_checks_with_spec(
+    _mode: Mode,
+    features: &Features,
+    cfg: &TestConfig,
+    client: &HttpClient,
+    spec: &SpecSource,
+) -> Result<(ServiceReport, SpecCompileResult)> {
+    WITH_SPEC_CALLS.fetch_add(1, Ordering::SeqCst);
+    let mut compile = common::spec_source::compile_identity(spec)?;
+    if LIE_SPEC_DOCUMENT_HASH.swap(false, Ordering::SeqCst) {
+        compile.schema_document_sha256 = "0".repeat(64);
+    }
+    let mut tests = Vec::new();
+
+    tests.push(level0_reachable(cfg, client).await);
+    tests.push(level1_openapi_specsource(cfg, client, spec).await);
+    tests.push(level1_basic_schema_and_fields_with_spec(cfg, client, spec).await);
+    tests.push(level2_checksum_correctness(features, cfg, client).await);
+    tests.push(level2_range_request(cfg, client).await);
+    tests.push(level5_invalid_id_404(cfg, client).await);
+
+    Ok((
+        ServiceReport {
+            service: ServiceKind::Drs,
+            tests,
+        },
+        compile,
+    ))
 }
 
 async fn level0_reachable(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
@@ -55,6 +116,59 @@ async fn level1_basic_schema_and_fields(cfg: &TestConfig, client: &HttpClient) -
         .await
         .and_then(|v| {
             common::ga4gh_schemas::validate_drs_object(&v)?;
+            validate_basic_drs_object("test-object-1", &v)?;
+            Ok(v)
+        })
+        .map(|_| ());
+    TestCaseResult::from_outcome(
+        "DRS DrsObject OpenAPI + access_methods",
+        ComplianceLevel::Level1,
+        TestCategory::Schema,
+        res,
+    )
+}
+
+async fn level1_openapi_specsource(
+    cfg: &TestConfig,
+    client: &HttpClient,
+    spec: &SpecSource,
+) -> TestCaseResult {
+    let url = format!(
+        "{}/objects/{}",
+        cfg.services.drs_url.trim_end_matches('/'),
+        "test-object-1"
+    );
+    let res = client
+        .get_json(&url)
+        .await
+        .and_then(|v| {
+            common::ga4gh_schemas::validate_drs_object_with(spec, &v)?;
+            Ok(v)
+        })
+        .map(|_| ());
+    TestCaseResult::from_outcome(
+        DRS_OPENAPI_SPECSOURCE_CHECK,
+        ComplianceLevel::Level1,
+        TestCategory::Schema,
+        res,
+    )
+}
+
+async fn level1_basic_schema_and_fields_with_spec(
+    cfg: &TestConfig,
+    client: &HttpClient,
+    spec: &SpecSource,
+) -> TestCaseResult {
+    let url = format!(
+        "{}/objects/{}",
+        cfg.services.drs_url.trim_end_matches('/'),
+        "test-object-1"
+    );
+    let res = client
+        .get_json(&url)
+        .await
+        .and_then(|v| {
+            common::ga4gh_schemas::validate_drs_object_with(spec, &v)?;
             validate_basic_drs_object("test-object-1", &v)?;
             Ok(v)
         })

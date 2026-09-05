@@ -204,8 +204,23 @@ fn load_drs_object_schema() -> Result<JSONSchema> {
 
 /// Validate GET `/objects/{id}` JSON against official GA4GH DRS `DrsObject`.
 pub fn validate_drs_object(value: &Value) -> Result<()> {
+    crate::spec_source::record_bundled_drs_validate();
     let schema = DRS_OBJECT_SCHEMA.get_or_try_init(load_drs_object_schema)?;
     validate_against(schema, value, "GA4GH DRS DrsObject schema")
+}
+
+/// Validate against caller-supplied SpecSource bytes. No bundled OpenAPI fallback.
+pub fn validate_drs_object_with(
+    spec: &crate::spec_source::SpecSource,
+    value: &Value,
+) -> Result<crate::spec_source::SpecCompileResult> {
+    if spec.schema_component != "DrsObject" {
+        anyhow::bail!(
+            "validate_drs_object_with requires schema_component DrsObject (got {})",
+            spec.schema_component
+        );
+    }
+    crate::spec_source::validate_with_spec(spec, value)
 }
 
 // --- Beacon v2 boolean response ---

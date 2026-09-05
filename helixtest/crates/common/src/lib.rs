@@ -7,5 +7,6 @@ pub mod http;
 pub mod logging;
 pub mod report;
 pub mod schemas;
+pub mod spec_source;
 pub mod util;
 pub mod workflow;
