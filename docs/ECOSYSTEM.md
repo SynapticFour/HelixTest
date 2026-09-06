@@ -1,16 +1,16 @@
 # Synaptic Four — this repo in the portfolio
 
-Four **products**, two free **ambassadors**, Ferrum **companions**, and **proof** repos. Glue is GA4GH; Solum extends into clinical data. **Not a bundle SKU.** Canonical map: [Ferrum PORTFOLIO.md](https://github.com/SynapticFour/Ferrum/blob/main/docs/PORTFOLIO.md).
+Ferrum, ga4gh-infra, Solum, and BioResearch Assistant sit alongside Helix/HelixTest (API checks), HELIOS (pipeline evidence), Ferrum companions, and local demos. Glue is GA4GH; Solum extends into clinical data. Canonical map: [Ferrum PORTFOLIO.md](https://github.com/SynapticFour/Ferrum/blob/main/docs/PORTFOLIO.md).
 
-**You are here:** [HelixTest](https://github.com/SynapticFour/HelixTest) — **free ambassador**: GA4GH conformance CLI (`helixtest`). Not a product SKU. Not a server.
+**You are here:** [HelixTest](https://github.com/SynapticFour/HelixTest) — GA4GH conformance CLI (`helixtest`).
 
 ## Repositories
 
 | Kind | Repository | Role | License |
 |------|------------|------|---------|
-| Ambassador | **HelixTest** (this repo) | Conformance CLI (`helixtest`) | Apache-2.0 |
-| Ambassador | [Helix](https://github.com/SynapticFour/Helix) | VERIFY brand (`helix verify`); same ambassador line as this CLI. Not this git root. | Apache-2.0 |
-| Ambassador | [HELIOS](https://github.com/SynapticFour/HELIOS) | Pipeline audit evidence — not HelixTest | Apache-2.0 |
+| Open source | **HelixTest** (this repo) | Conformance CLI (`helixtest`) | Apache-2.0 |
+| Open source | [Helix](https://github.com/SynapticFour/Helix) | VERIFY CLI (`helix verify`). Separate git root. | Apache-2.0 |
+| Open source | [HELIOS](https://github.com/SynapticFour/HELIOS) | Pipeline audit evidence — distinct from HelixTest | Apache-2.0 |
 | Product | [Ferrum](https://github.com/SynapticFour/Ferrum) | GA4GH data/compute | BUSL-1.1 |
 | Product | [ga4gh-infra](https://github.com/SynapticFour/ga4gh-infra) | Identity plane | Apache-2.0 |
 | With Ferrum | [Ferrum-Lab-Kit](https://github.com/SynapticFour/Ferrum-Lab-Kit) | Subset install | BUSL-1.1 |

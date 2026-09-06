@@ -1,10 +1,10 @@
-# HelixTest — GA4GH Conformance Suite (free ambassador)
+# HelixTest — GA4GH Conformance Suite
 
-HelixTest is a Rust-based conformance and integration test suite for GA4GH-style platforms. The CLI binary is **`helixtest`**. **Apache-2.0 — not a product SKU.** Synaptic Four publishes it so anyone can probe a GA4GH API, including Ferrum.
+HelixTest is a Rust-based conformance and integration test suite for GA4GH-style platforms. The CLI binary is **`helixtest`** (Apache-2.0). Point it at a running GA4GH API — including Ferrum.
 
-HelixTest tests behavior against the GA4GH spec, independent of implementation. The CLI binary is **`helixtest`**. The VERIFY brand around this suite is [Helix](https://github.com/SynapticFour/Helix) (binary `helix`). Not HELIOS. Not GA4GH certification. Ferrum is used as a reference target, not a dependency.
+HelixTest checks behaviour against the GA4GH spec, independent of implementation. The VERIFY CLI around this suite is [Helix](https://github.com/SynapticFour/Helix) (binary `helix`). HELIOS is a different tool (signed pipeline evidence). Ferrum is a convenient reference target, not a dependency.
 
-> **Not a deployable stack:** HelixTest does not run servers. Start a target first (Ferrum, ga4gh-infra, or both), then run HelixTest against it. See **[docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)** for unified lifecycle commands on sibling repos.
+> HelixTest does not run servers. Start a target first (Ferrum, ga4gh-infra, or both), then run HelixTest against it. See **[docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)** for lifecycle commands on sibling repos.
 
 Scope boundary: HelixTest remains **GA4GH-focused**. MII/KDS checks live in Ferrum / Ferrum-Lab-Kit integration layers.
 

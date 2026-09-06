@@ -1,17 +1,16 @@
 # Opt-in: HelixTest against published Ferrum GHCR (edge / SQLite).
 #
-# Does not run on pull requests. This is demo-mode (auth off, FERRUM_OFFLINE=1),
-# labeled honestly — not a hospital auth-on proof. Default image is GHCR `:edge`
-# (latest main publish). Tag `v0.3.1-edge` lacks official Beacon boolean `meta`
-# fields; HelixTest v0.1.2 fail-level 2 rejects it. Pass an explicit SHA or tag
-# via workflow_dispatch if you need a frozen cut.
+# Does not run on pull requests. Demo-mode (auth off, FERRUM_OFFLINE=1).
+# Default image is GHCR `:edge` (latest main publish). Tag `v0.3.1-edge` lacks
+# official Beacon boolean `meta` fields; HelixTest v0.1.2 fail-level 2 rejects it.
+# Pass an explicit SHA or tag via workflow_dispatch if you need a frozen cut.
 
 name: Live Ferrum GHCR
 
 on:
-  # Weekly schedule off. workflow_dispatch / push / PR still run. Do not bump Lab Kit to Ferrum main.
+  # Weekly schedule off; workflow_dispatch still runs.
   # schedule:
-  #   # Public ambassador proof; demo-mode (auth off). Skip if GHCR pull fails.
+  #   # Live GHCR demo (auth off). Skip if GHCR pull fails.
   #   - cron: "17 4 * * 1"
   workflow_dispatch:
     inputs:

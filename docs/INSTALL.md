@@ -1,6 +1,6 @@
 # Install HelixTest without cloning the suite
 
-HelixTest is a **free Apache-2.0 ambassador** CLI (`helixtest`). It is not a server.
+HelixTest is an Apache-2.0 CLI (`helixtest`). It does not run a server — point it at a target you already started.
 
 **MSRV is Rust 1.88.0** (encoded in the workspace). This repo’s `rust-toolchain.toml` is **1.91.1** (same channel as Ferrum / Lab-Kit / ga4gh-infra / Solum). CI keeps an explicit 1.88 MSRV job so third parties can still build on the older compiler.
 
