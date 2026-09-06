@@ -25,6 +25,7 @@ url = { workspace = true }
 crypt4gh = { workspace = true }
 base64 = { workspace = true }
 bytes = "1"
+sha2 = "0.10"
 
 [build-dependencies]
 sha2 = "0.10"

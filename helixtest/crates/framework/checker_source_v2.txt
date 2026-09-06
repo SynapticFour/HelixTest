@@ -1,0 +1,10 @@
+# helix-drs-checker-v2 — ordered DRS verifier source closure.
+# Paths are relative to the helixtest/ crate root. Comments and blank lines ignored.
+# Hashed by crates/framework/build.rs. Not the whole HelixTest repository.
+crates/framework/src/drs.rs
+crates/framework/src/level0.rs
+crates/common/src/ga4gh_schemas.rs
+crates/common/src/spec_source.rs
+crates/common/src/http.rs
+crates/common/src/util.rs
+schemas/ga4gh/drs-openapi.yaml

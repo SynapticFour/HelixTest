@@ -2,15 +2,19 @@
 pub mod africa;
 pub mod auth;
 pub mod beacon;
+pub mod checker_identity;
 pub mod crypt4gh;
 mod crypt4gh_ferrum_http;
 pub mod drs;
 pub mod e2e;
 pub mod htsget;
 pub mod infra;
+mod level0;
 pub mod tes;
 pub mod trs;
 pub mod wes;
+
+pub(crate) use level0::level0_http;
 
 use anyhow::Context;
 use common::config::TestConfig;
@@ -19,25 +23,7 @@ use common::report::{
     ComplianceLevel, OverallReport, ServiceKind, ServiceReport, SkippedService, TestCaseResult,
     TestCategory,
 };
-use common::util::{level0_reachable_ok, profiles_dir};
-
-pub(crate) fn level0_http(
-    name: &str,
-    res: Result<reqwest::Response, reqwest::Error>,
-) -> TestCaseResult {
-    match res {
-        Ok(resp) if level0_reachable_ok(resp.status()) => {
-            TestCaseResult::pass(name, ComplianceLevel::Level0, TestCategory::Other)
-        }
-        Ok(resp) => TestCaseResult::fail(
-            name,
-            ComplianceLevel::Level0,
-            TestCategory::Other,
-            format!("Unexpected HTTP status: {}", resp.status()),
-        ),
-        Err(e) => TestCaseResult::fail(name, ComplianceLevel::Level0, TestCategory::Other, e),
-    }
-}
+use common::util::profiles_dir;
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs;
