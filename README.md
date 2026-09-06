@@ -1,6 +1,6 @@
 # HelixTest — GA4GH Conformance Suite (free ambassador)
 
-Freeze status (2026-09): [STATUS.md](STATUS.md).
+Status: [STATUS.md](STATUS.md).
 
 
 HelixTest is a Rust-based conformance and integration test suite for GA4GH-style platforms. The CLI binary is **`helixtest`**. **Apache-2.0 — not a product SKU.** Synaptic Four publishes it so anyone can probe a GA4GH API, including Ferrum.
