@@ -63,7 +63,7 @@ Consumers (Helix `VERSIONS.lock`, `helixtest-action`) pin a **SHA** and/or tag â
 
 ## Continuity
 
-HelixTest is maintained by a single steward (Synaptic Four). To reduce dependence on any one person, the build is documented from a clean machine in this file, the release steps are written down, and the source can be inspected and built without access to Synaptic Four systems (clean-room check dated 2026-10; requires libsodium development headers and pkg-config). Operational details such as accounts, publication rights and escrow arrangements are kept in a non-public continuity plan. If you depend on HelixTest in production, ask for it.
+HelixTest is maintained by a single steward (Synaptic Four). To reduce dependence on any one person, the build is documented from a clean machine in this file, the release steps are written down, and the source can be inspected and built without access to Synaptic Four systems (clean-room check dated 2026-10; requires libsodium development headers and pkg-config). Operational details such as accounts, publication rights and escrow arrangements are being documented in a non-public continuity plan.
 
 ## Minimal operator runbook
 
