@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Profile `edge` runs DRS, Beacon, htsget, and Crypt4GH against the Ferrum edge binary. WES, TES, TRS, and Passports are skipped with a stated reason and are not reported as passed. `helixtest/fixtures/edge/` seeds DRS `test-object-1` from a small synthetic file. See [docs/edge-profile.md](docs/edge-profile.md).
 - In-process mock GA4GH DRS (not Ferrum) plus CI tests so generic DRS checks run against any DRS HTTP target. Profile `ga4gh-drs` enables the same five DRS checks as Ferrum (`strict_drs_checksums`).
 - `--start-compose` as alias for `--start-ferrum` (compose start is not Ferrum-specific).
 

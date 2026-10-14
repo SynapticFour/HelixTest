@@ -71,6 +71,18 @@ cargo run --bin helixtest -- \
       --fail-level 1 > helix-report.json
 ```
 
+## edge profile
+
+Profile file: `profiles/edge.toml`. Full steps: [../../docs/edge-profile.md](../../docs/edge-profile.md).
+
+- Enabled: `drs`, `beacon`, `htsget`, `crypt4gh`
+- Disabled, and recorded as skipped rather than passed: `wes`, `tes`, `trs`, `auth` (Passports), plus `age` and `e2e`
+- DRS object `test-object-1` is seeded from `fixtures/edge/test-object-1.txt` with `fixtures/edge/seed-drs-test-object.sh`
+
+```bash
+helixtest --all --profile edge --report table
+```
+
 ## Notes
 
 - Exit code is non-zero only if enabled modules fail (or `--fail-level` is not met for enabled modules).

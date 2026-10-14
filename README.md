@@ -46,6 +46,7 @@ helixtest --all --mode ferrum+infra --profile ferrum-infra
 | `helixtest --all --mode ferrum` | Full suite against Ferrum demo stack |
 | `helixtest --all --mode ferrum+infra --profile ferrum-infra` | Co-deploy broker + Passport-on-DRS |
 | `helixtest --all --mode ferrum+infra --profile ferrum-infra-pilot` | Same against Ferrum `make up-pilot-local` (:8080) |
+| `helixtest --all --profile edge` | Ferrum edge binary: DRS, Beacon, htsget, Crypt4GH. WES, TES, TRS, and Passports are skipped. See [docs/edge-profile.md](docs/edge-profile.md) |
 | `helixtest --all --only wes --mode ferrum` | Single service |
 | `helixtest --help` | All flags, report formats, fail levels |
 

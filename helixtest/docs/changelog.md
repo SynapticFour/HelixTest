@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Profile `edge` for the Ferrum edge binary (DRS, Beacon, htsget, Crypt4GH). WES, TES, TRS, and Passports are skipped. Synthetic DRS seed: `fixtures/edge/`.
 - CI and `make prove` / `make test` run the workspace tests. Live-service tests are `#[ignore]`; `make test-live` runs them against a target you started.
 
 ## 0.1.1 (2026-08-15)
