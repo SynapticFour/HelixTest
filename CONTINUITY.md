@@ -2,7 +2,7 @@
 
 Survivability notes. **True on `origin/main` today.** Not legal advice. Not GA4GH certification.
 
-**Audited revision:** `origin/main` @ `b7b24a4238ca17b4e242dff7085297fc0b69f408`. Latest tag on origin: `v0.1.3` (commit `1832c043e1679ec283cb2113510ee33684317cce`, differs from this main tip). Package version on main (`helixtest-cli`): `0.1.0`.
+Checked on 2026-10-14. Release tags: `git tag` (do not copy a tag or commit SHA into this file). This repository has no `VERSIONS.lock`. Crate version: `Cargo.toml`.
 
 ## What this project is
 
@@ -24,7 +24,8 @@ Rust GA4GH conformance / integration suite. CLI binary **`helixtest`**. License:
 ```bash
 git clone https://github.com/SynapticFour/HelixTest.git
 cd HelixTest
-git checkout v0.1.3    # or main / another v* tag
+git tag -l 'v*'
+git checkout <tag>    # or main; do not assume a version number written here
 ```
 
 ### Prove (CI-parity offline)
