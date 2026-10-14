@@ -8,7 +8,7 @@ OFFLINE_TEST_FLAGS := --workspace --exclude api-tests --exclude auth-tests --exc
 help:
 	@echo "HelixTest — conformance runner (Synaptic Four GA4GH stack)"
 	@echo ""
-	@echo "  make install   Build helixtest CLI (cargo build --release)"
+	@echo "  make install   Build helixtest CLI (cargo build --locked --release)"
 	@echo "  make test      Offline unit tests (CI parity; no live stack)"
 	@echo "  make prove     Zero-risk proof: offline tests + release CLI"
 	@echo ""
@@ -18,16 +18,16 @@ help:
 	@echo "  helixtest --all --mode ferrum"
 
 install:
-	cargo build --release -p helixtest-cli
+	cargo build --locked --release -p helixtest-cli
 	@echo "Binary: target/release/helixtest"
 
 test:
-	cargo test $(OFFLINE_TEST_FLAGS)
+	cargo test --locked $(OFFLINE_TEST_FLAGS)
 
 # Zero-risk customer path. Live Ferrum proof: docs/PROVE.md
 prove: test
 	$(MAKE) spdx-check
-	cargo build --release -p helixtest-cli
+	cargo build --locked --release -p helixtest-cli
 	@echo "HelixTest prove OK. Binary: target/release/helixtest"
 
 spdx-check:
