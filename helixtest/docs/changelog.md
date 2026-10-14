@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Profile `edge` for the Ferrum edge binary (DRS, Beacon, htsget, Crypt4GH). WES, TES, TRS, and Passports are skipped. Synthetic DRS seed: `fixtures/edge/`.
+- `docs/third-party-targets.md` records the 2026-10 Sapporo, Funnel, Starter Kit DRS, and beacon2-pi-api attempts. No third-party profile.
 - CI and `make prove` / `make test` run the workspace tests. Live-service tests are `#[ignore]`; `make test-live` runs them against a target you started.
 
 ## 0.1.1 (2026-08-15)

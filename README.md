@@ -50,6 +50,8 @@ helixtest --all --mode ferrum+infra --profile ferrum-infra
 | `helixtest --all --only wes --mode ferrum` | Single service |
 | `helixtest --help` | All flags, report formats, fail levels |
 
+2026-10 runs against Sapporo, Funnel, the Starter Kit DRS, and beacon2-pi-api are written up in [docs/third-party-targets.md](docs/third-party-targets.md). That page does not add a profile for those servers.
+
 **Exit codes (Uniklinik IT):** `0` = suite met `--fail-level`; `1` = failures (or usage error). `--report table` is the human report; `--report json` is for CI. Example: a Beacon 404 prints the URL and expected status — start the target (`make up` in Ferrum) before re-running.
 
 Full usage, architecture, and CI integration: **[helixtest/README.md](helixtest/README.md)**. Known limitations: **[helixtest/docs/known-limitations.md](helixtest/docs/known-limitations.md)**.
