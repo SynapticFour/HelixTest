@@ -5,6 +5,7 @@ use framework::{run_all, Mode};
 use std::collections::HashSet;
 
 #[tokio::test]
+#[ignore = "requires a live auth target (default localhost:8085); this crate does not start one. Run with: make test-live"]
 async fn framework_auth_suite() -> Result<()> {
     let report = run_all(
         Mode::Generic,

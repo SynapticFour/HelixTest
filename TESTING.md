@@ -7,10 +7,10 @@ Workspace members (`Cargo.toml`): `helixtest-common`, `helixtest-framework`, `ap
 `make prove` / `make test` use:
 
 ```text
-cargo test --workspace --exclude api-tests --exclude auth-tests --exclude e2e-tests --exclude workflow-tests
+cargo test --workspace
 ```
 
-That is the same exclude list as `.github/workflows/conformance.yml` and `scripts/hooks/ci-check.sh`.
+Four tests that call a live target are `#[ignore]` and are not executed: `framework_wes_drs_trs_contract`, `framework_auth_suite`, `framework_e2e_suite`, `framework_wes_workflows`. `make test-live` runs those four with `--ignored`. The slow `robustness_timeout_fails_fast` ignore is separate and is not part of `make test-live`. CI job `build-and-test` runs `make prove`. Job `test-live` runs only when the **CI** workflow is dispatched with `run_live_tests` set. That job does not start a server.
 
 ---
 
@@ -24,7 +24,7 @@ That is the same exclude list as `.github/workflows/conformance.yml` and `script
 | rustfmt + clippy | **Not** in `Makefile`. CI job `build-and-test` and `scripts/hooks/ci-check.sh` | Offline | CI **CI** workflow (PR / push / dispatch); local if you run the hook. `.pre-commit-config.yaml` maps `ci-parity` → `ci-check.sh` (fmt + clippy + `make test`, **not** SPDX / release binary) |
 | MSRV compile | `conformance.yml` job `msrv`: `cargo check --locked --workspace --all-targets` on **1.88.0** (includes live-stack crates as **compile**, not `cargo test`) | Offline compile; does **not** execute live HTTP | Same **CI** workflow; skipped for `dependabot[bot]` |
 | ARM64 offline prove | `conformance.yml` job `build-arm64`: `make prove` on `ubuntu-24.04-arm` | Offline | **workflow_dispatch**, or **push** to `main`/`master` only — **not** on pull_request |
-| Live `framework::run_all` subsets | `api-tests` (WES+DRS+TRS), `workflow-tests` (WES), `auth-tests` (Auth), `e2e-tests` (E2E) | **Live target** (env/profile URLs). Excluded from `make prove` | Local only unless you `cargo test -p …` with a stack. **Not** in default CI |
+| Live `framework::run_all` subsets | `api-tests` (WES+DRS+TRS), `workflow-tests` (WES), `auth-tests` (Auth), `e2e-tests` (E2E) | **Live target** (env/profile URLs). `#[ignore]` on `make test` / `cargo test` | `make test-live` locally. CI job `test-live` on **workflow_dispatch** when input `run_live_tests` is true. **Not** on push or pull_request. The job does not start a target |
 | HelixTest CLI vs published Ferrum GHCR (auth **off**, demo) | `.github/workflows/live-ferrum-ghcr.yml` (`Live Ferrum GHCR`) | **Live** Docker `ghcr.io/synapticfour/ferrum:edge` (overridable). Default `--only beacon` on schedule (edge has no WES; comments say `--all` hit TRS `:8083` and connection-refused) | **cron** `17 4 * * 1`; **workflow_dispatch**. **Does not run on pull requests** |
 | HS256 auth-on vs published Ferrum GHCR | `.github/workflows/live-ferrum-ghcr-auth.yml` (`Live Ferrum GHCR auth-on`) | **Live** Docker, `require_auth=true`. Python/curl HS256 proof + `helixtest --only auth --fail-level 4` (`HELIXTEST_AUTH_SURFACE=service-info`). **Not** Passports / ga4gh-infra | **cron** `27 4 * * 1`; **workflow_dispatch**. **Not** on PR |
 | Gitleaks | `secret-scan.yml` | Offline (repo scan) | **pull_request**; **push** `main`/`master`. No `workflow_dispatch` in this file |
@@ -48,7 +48,7 @@ WES/TES cases stay **serial** so the target is not overloaded. Independent servi
 
 ### Live-stack cargo tests
 
-`api-tests`, `auth-tests`, `e2e-tests`, and `workflow-tests` now call `framework::run_all` (same checks as `helixtest --all`). They still need a running stack and stay **excluded** from default CI / `scripts/hooks/ci-check.sh`. In-process age checks live in `crypt4gh-tests` and run in CI.
+`api-tests`, `auth-tests`, `e2e-tests`, and `workflow-tests` call `framework::run_all` (same checks as `helixtest --all`). Each test is `#[ignore]` because it needs a running target. `cargo test` and `make test` compile them and do not call localhost. `make test-live` runs the four ignored tests. Default CI (`make prove`) does not run them. Dispatch job `test-live` does, and only when asked. In-process age checks live in `crypt4gh-tests` and run in CI.
 
 ### Africa / Infra modes
 
@@ -112,13 +112,10 @@ Ignored HTTP timeout test (see §2):
 cargo test -p helixtest-common -- --ignored
 ```
 
-**Live-stack crates** (need URLs / a running target; will fail or skip-heavy without one):
+**Live-stack crates** (need URLs / a running target; assertions are unchanged):
 
 ```bash
-cargo test -p api-tests
-cargo test -p auth-tests
-cargo test -p e2e-tests
-cargo test -p workflow-tests
+make test-live
 ```
 
 CLI against a stack you started (not started by HelixTest): see [docs/PROVE.md](docs/PROVE.md). Example after `cd ../Ferrum && make up`:

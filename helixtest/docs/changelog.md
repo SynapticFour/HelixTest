@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- CI and `make prove` / `make test` use the same offline crate excludes (live-stack crates need a running target).
+- CI and `make prove` / `make test` run the workspace tests. Live-service tests are `#[ignore]`; `make test-live` runs them against a target you started.
 
 ## 0.1.1 (2026-08-15)
 

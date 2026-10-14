@@ -5,6 +5,7 @@ use framework::{run_all, Mode};
 use std::collections::HashSet;
 
 #[tokio::test]
+#[ignore = "requires a live TRS, DRS, WES, and Beacon target; this crate does not start one. Run with: make test-live"]
 async fn framework_e2e_suite() -> Result<()> {
     let report = run_all(Mode::Generic, Some(HashSet::from([ServiceKind::E2e])), None).await?;
     anyhow::ensure!(

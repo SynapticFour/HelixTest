@@ -17,7 +17,7 @@ git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest
 make prove
 ```
 
-Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**. CI on `main` / PRs runs the same `make prove` (offline tests + release CLI; live-stack crates excluded). Third-party GitHub Actions: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) (default binaries **v0.1.3**, same as the suite pin; does not start Ferrum). VERIFY brand: [Helix](https://github.com/SynapticFour/Helix).
+Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**. CI on `main` / PRs runs the same `make prove` (workspace tests + release CLI). Four tests that need a live target are ignored; `make test-live` runs them, and CI runs that target only on a manual dispatch. Third-party GitHub Actions: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) (default binaries **v0.1.3**, same as the suite pin; does not start Ferrum). VERIFY brand: [Helix](https://github.com/SynapticFour/Helix).
 
 **Run against a local Ferrum demo** (start Ferrum first — see [Ferrum README](https://github.com/SynapticFour/Ferrum)):
 

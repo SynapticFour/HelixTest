@@ -9,7 +9,7 @@ make prove
 
 That is HelixTest as a product: the suite compiles and its own unit tests pass. GitHub Actions on `main` / PRs run the same `make prove` command.
 
-`make test` / `make prove` **exclude** the live-stack crates (`api-tests`, `auth-tests`, `e2e-tests`, `workflow-tests`). Those crates call `framework::run_all` against a running target. Hitting them without a stack is not a customer proof.
+`make test` / `make prove` run `cargo test --workspace`. The four live-stack tests (`api-tests`, `auth-tests`, `e2e-tests`, `workflow-tests`) are `#[ignore]` because they call `framework::run_all` against a running target. `make test-live` runs them. Hitting them without a stack is not a customer proof.
 
 ## Live proof (needs a target you control)
 

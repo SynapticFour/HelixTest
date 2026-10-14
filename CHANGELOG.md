@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `cargo test` does not call localhost. `framework_wes_drs_trs_contract`, `framework_auth_suite`, `framework_e2e_suite`, and `framework_wes_workflows` are `#[ignore]` because they need a live target. `make test-live` runs them. CI runs that target only on `workflow_dispatch` when `run_live_tests` is true. Assertions are unchanged.
 - `--mode generic` no longer switches to Ferrum when WES `/service-info` `name` contains `"Ferrum"`. Ferrum remains opt-in (`--mode ferrum*`).
 - Documented that default `--start-compose` / `--start-ferrum` compose (`helixtest/docker/docker-compose.yml`) uses **unverified** `ghcr.io/example/mock-*` images. 2026-09-04, Docker 29.7.2: `docker manifest inspect` → `manifest unknown` for wes/tes/drs/trs/beacon/oidc. Not a working mock stack. Stage 0 non-Ferrum proof remains the in-process wiremock DRS (Helix D2).
 - Operator pin in `docs/IDENTITY.md` / `docs/INSTALL.md` is git tag **v0.1.3** (SHA `1832c043…`), matching Ferrum `VERSIONS.lock`. `helixtest-action` default binaries are **v0.1.3** (same tag). Helix (`helix verify`) is the VERIFY brand; this git root stays HelixTest. Identity copy says **HelixTest** tests spec behavior (not “Helix tests…”).
