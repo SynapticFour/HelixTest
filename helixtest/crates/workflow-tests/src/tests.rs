@@ -5,6 +5,7 @@ use framework::{run_all, Mode};
 use std::collections::HashSet;
 
 #[tokio::test]
+#[ignore = "requires a live WES target (default localhost:8080); this crate does not start one. Run with: make test-live"]
 async fn framework_wes_workflows() -> Result<()> {
     let report = run_all(Mode::Generic, Some(HashSet::from([ServiceKind::Wes])), None).await?;
     anyhow::ensure!(

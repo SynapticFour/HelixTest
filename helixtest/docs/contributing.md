@@ -86,7 +86,7 @@ tests.push(level2_my_new_check(cfg, client).await);
 
 - [x] **Legal:** LICENSE and NOTICE are in repo root; README and docs reference [DISCLAIMER](DISCLAIMER.md) and state that test results are not official certification.
 - [x] **Wording:** No unconditional “guarantee” or “certified”; use “conformance checks,” “for informational use,” “as is” where appropriate.
-- [x] **CI:** `cargo build --bin helixtest` and `cargo test --workspace` (with the live-stack crate excludes in `conformance.yml`) pass.
+- [x] **CI:** `cargo build --bin helixtest` and `cargo test --workspace` pass. Live-service tests are `#[ignore]`; `make test-live` is the dispatch job, not the PR job.
 - [x] **Config:** Default config or env fallbacks are documented; no secrets or internal URLs in repo.
 - [x] **Attribution:** Synaptic Four USP, copyright (© 2025), and contact (contact@synapticfour.com · synapticfour.com) appear in README, NOTICE, and CLI (banner/help).
 

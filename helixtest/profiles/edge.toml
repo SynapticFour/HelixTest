@@ -1,0 +1,37 @@
+# Edge profile for the Ferrum edge binary (one process, SQLite).
+# Runs only DRS, Beacon, htsget, and Crypt4GH.
+#
+# WES, TES, TRS, and Auth are not enabled. The runner records each as skipped
+# with the reason "skipped by profile or --only filter". A skipped service is
+# not a pass: it is absent from the service table and listed under
+# "Skipped services".
+#
+# Why those four are skipped: the 2026-10 edge measurement
+# (a-lite-evidence-run, helixtest-ferrum-edge.table.txt) got HTTP 503
+# "service disabled via hot-reload config" for WES, TES, and TRS, and HTTP 503
+# for Auth /service-info. Passports are exercised by --mode ferrum+infra, not
+# by this binary. Age is an in-process check, not the edge binary. E2E drives
+# TRS and WES, which this binary does not serve.
+#
+# DRS id test-object-1 was HTTP 404 until seeded. See docs/edge-profile.md.
+# Override ports with DRS_URL, BEACON_URL, and HTSGET_URL. The profile default
+# is port 8080. A different port was used in that measurement.
+
+[services]
+drs = "http://127.0.0.1:8080/ga4gh/drs/v1"
+beacon = "http://127.0.0.1:8080/ga4gh/beacon/v2"
+htsget = "http://127.0.0.1:8080/ga4gh/htsget/v1"
+# Unroutable. If a later change enables these, the call fails closed.
+wes = "http://127.0.0.1:9"
+tes = "http://127.0.0.1:9"
+trs = "http://127.0.0.1:9"
+auth = "http://127.0.0.1:9"
+
+[subset]
+enabled_services = ["drs", "beacon", "htsget", "crypt4gh"]
+disabled_services = ["wes", "tes", "trs", "auth", "age", "e2e", "africa", "infra"]
+
+[features]
+supports_scatter_gather = false
+supports_beacon_v2 = true
+strict_drs_checksums = true

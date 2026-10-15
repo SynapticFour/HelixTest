@@ -8,7 +8,7 @@ WES/TES cases stay **serial** so the target is not overloaded. Independent servi
 
 ## Live-stack cargo tests
 
-`api-tests`, `auth-tests`, `e2e-tests`, and `workflow-tests` now call `framework::run_all` (same checks as `helixtest --all`). They still need a running stack and stay **excluded** from default CI / `scripts/hooks/ci-check.sh`. In-process age checks live in `crypt4gh-tests` and run in CI.
+`api-tests`, `auth-tests`, `e2e-tests`, and `workflow-tests` call `framework::run_all` (same checks as `helixtest --all`). They still need a running stack. Each test is `#[ignore]`, so `cargo test` does not call localhost. `make test-live` runs them. Default CI does not. In-process age checks live in `crypt4gh-tests` and run in CI.
 
 ## Africa / Infra modes
 

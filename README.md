@@ -17,7 +17,7 @@ git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest
 make prove
 ```
 
-Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**. CI on `main` / PRs runs the same `make prove` (offline tests + release CLI; live-stack crates excluded). Third-party GitHub Actions: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) (default binaries **v0.1.3**, same as the suite pin; does not start Ferrum). VERIFY brand: [Helix](https://github.com/SynapticFour/Helix).
+Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**. CI on `main` / PRs runs the same `make prove` (workspace tests + release CLI). Four tests that need a live target are ignored; `make test-live` runs them, and CI runs that target only on a manual dispatch. Third-party GitHub Actions: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) (default binaries **v0.1.3**, same as the suite pin; does not start Ferrum). VERIFY brand: [Helix](https://github.com/SynapticFour/Helix).
 
 **Run against a local Ferrum demo** (start Ferrum first — see [Ferrum README](https://github.com/SynapticFour/Ferrum)):
 
@@ -46,8 +46,11 @@ helixtest --all --mode ferrum+infra --profile ferrum-infra
 | `helixtest --all --mode ferrum` | Full suite against Ferrum demo stack |
 | `helixtest --all --mode ferrum+infra --profile ferrum-infra` | Co-deploy broker + Passport-on-DRS |
 | `helixtest --all --mode ferrum+infra --profile ferrum-infra-pilot` | Same against Ferrum `make up-pilot-local` (:8080) |
+| `helixtest --all --profile edge` | Ferrum edge binary: DRS, Beacon, htsget, Crypt4GH. WES, TES, TRS, and Passports are skipped. See [docs/edge-profile.md](docs/edge-profile.md) |
 | `helixtest --all --only wes --mode ferrum` | Single service |
 | `helixtest --help` | All flags, report formats, fail levels |
+
+2026-10 runs against Sapporo, Funnel, the Starter Kit DRS, and beacon2-pi-api are written up in [docs/third-party-targets.md](docs/third-party-targets.md). That page does not add a profile for those servers.
 
 **Exit codes (Uniklinik IT):** `0` = suite met `--fail-level`; `1` = failures (or usage error). `--report table` is the human report; `--report json` is for CI. Example: a Beacon 404 prints the URL and expected status — start the target (`make up` in Ferrum) before re-running.
 

@@ -307,4 +307,52 @@ mod tests {
         assert!(enabled.contains(&ServiceKind::Wes));
         assert!(!enabled.contains(&ServiceKind::Auth));
     }
+
+    #[test]
+    fn edge_profile_runs_only_edge_services() {
+        let cfg = TestConfig::load(Some("edge")).expect("profiles/edge.toml");
+        let enabled = enabled_services_from_config(&cfg);
+        for kind in [
+            ServiceKind::Drs,
+            ServiceKind::Beacon,
+            ServiceKind::Htsget,
+            ServiceKind::Crypt4gh,
+        ] {
+            assert!(enabled.contains(&kind), "{kind:?} must run");
+        }
+        for kind in [
+            ServiceKind::Wes,
+            ServiceKind::Tes,
+            ServiceKind::Trs,
+            ServiceKind::Auth,
+            ServiceKind::Age,
+            ServiceKind::E2e,
+        ] {
+            assert!(!enabled.contains(&kind), "{kind:?} must be skipped");
+        }
+        assert_eq!(enabled.len(), 4);
+        assert_eq!(cfg.services.wes_url, "http://127.0.0.1:9");
+        assert_eq!(cfg.services.drs_url, "http://127.0.0.1:8080/ga4gh/drs/v1");
+
+        let path = common::util::profiles_dir().unwrap().join("edge.toml");
+        let text = std::fs::read_to_string(&path).unwrap();
+        let value: toml::Value = toml::from_str(&text).unwrap();
+        let features = value.get("features").expect("[features]");
+        assert_eq!(
+            features
+                .get("supports_scatter_gather")
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
+        assert_eq!(
+            features.get("supports_beacon_v2").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        assert_eq!(
+            features
+                .get("strict_drs_checksums")
+                .and_then(|v| v.as_bool()),
+            Some(true)
+        );
+    }
 }

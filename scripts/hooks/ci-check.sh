@@ -15,7 +15,7 @@ echo "ci-check: cargo clippy"
 cargo clippy --workspace --all-targets -- -D warnings
 
 echo "ci-check: tests"
-# Live-stack crates stay excluded; same as `make test` / CI `make prove`.
+# Same as CI `make prove`'s test step. Live-service tests are #[ignore].
 make test
 
 echo "ci-check: OK"

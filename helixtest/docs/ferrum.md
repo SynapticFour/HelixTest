@@ -27,6 +27,10 @@ This guide describes how to run the HelixTest conformance suite against **Ferrum
    ```
    Or, with profile set, the same run will use `profiles/ferrum.toml` for both endpoints and features.
 
+## Edge binary
+
+The Ferrum edge binary does not serve WES, TES, TRS, or Passports. Use `profiles/edge.toml` and [../../docs/edge-profile.md](../../docs/edge-profile.md). That run skips those services with a stated reason. It does not report them as passed. Seed DRS `test-object-1` from the synthetic file before expecting the DRS object cases to pass.
+
 ## Profile: `profiles/ferrum.toml`
 
 The Ferrum profile sets:

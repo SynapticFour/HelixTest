@@ -5,6 +5,7 @@ use framework::{run_all, Mode};
 use std::collections::HashSet;
 
 #[tokio::test]
+#[ignore = "requires a live WES, DRS, and TRS target (defaults are localhost); this crate does not start one. Run with: make test-live"]
 async fn framework_wes_drs_trs_contract() -> Result<()> {
     let report = run_all(
         Mode::Generic,

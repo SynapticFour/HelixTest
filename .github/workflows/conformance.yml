@@ -1,6 +1,8 @@
-# HelixTest – CI (build and test). For conformance against your deployment, set WES_URL etc. in
-# repository secrets and add a job that runs: cargo run --bin helixtest --release -- --all --report json --fail-level 2
-# See helixtest/README.md "CI integration" and "For platform implementers".
+# HelixTest – CI (build and test).
+# Push and pull_request run `make prove` (workspace tests; live-service tests are #[ignore]).
+# workflow_dispatch can also run `make test-live` when run_live_tests is true.
+# That job does not start a server. GitHub-hosted runners have no GA4GH target, so it fails closed.
+# See TESTING.md and helixtest/README.md "CI integration".
 
 name: CI
 
@@ -10,6 +12,12 @@ on:
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      run_live_tests:
+        description: "Run make test-live against a GA4GH target this runner can already reach. Hosted runners have none."
+        type: boolean
+        required: false
+        default: false
 
 
 concurrency:
@@ -40,10 +48,33 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      # Same command as a clone + `make prove`: offline tests + release CLI.
-      # Live-stack crates (api/auth/e2e/workflow-tests) stay excluded.
+      # Same command as a clone + `make prove`: workspace tests + release CLI.
+      # Live-service tests are #[ignore] and are not executed here.
       - name: Prove (offline)
         run: make prove
+
+  # Dispatch only. Does not run on push or pull_request.
+  # `make test-live` executes the ignored api/auth/e2e/workflow tests.
+  # This job does not start Ferrum or any other server.
+  test-live:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_live_tests == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@1.91.1
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install libsodium
+        run: sudo apt-get update && sudo apt-get install -y libsodium-dev pkg-config
+
+      - name: Live-service tests
+        run: make test-live
 
   msrv:
     if: github.actor != 'dependabot[bot]'
