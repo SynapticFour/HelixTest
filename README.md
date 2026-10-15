@@ -68,6 +68,8 @@ For Ferrum-specific guidance: [helixtest/docs/ferrum.md](helixtest/docs/ferrum.m
 
 **Disclaimer:** Test results do not constitute official GA4GH certification. See [LICENSE](LICENSE).
 
+Profiles for third-party servers are not yet available. `profiles/ga4gh-drs.toml` on this branch only selects DRS checks; it does not describe Sapporo, Funnel, Starter Kit DRS, or beacon2-pi-api. Tag v0.1.3 did not include that profile file. A first attempt in 2026-10 ran HelixTest v0.1.3 against pinned images of those servers and produced failures. Part of those failures are tool issues (WES submit as JSON where the vendored schema allows only multipart, TES MINIMAL view checked as a full task, DRS cases that require fixture `test-object-1`, Beacon checks that POST `/query`). Those failures are not a ranking and not target non-conformance by themselves.
+
 ---
 
 **Synaptic Four** · [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com) · Apache-2.0 (free)
