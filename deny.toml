@@ -1,7 +1,7 @@
 # Supply-chain policy for HelixTest. Modelled on Ferrum deny.toml
 # (licenses, advisories, bans, sources). HelixTest is Apache-2.0.
 # BUSL-1.1 is not allowed: this workspace does not ship BUSL crates.
-# crypt4gh is the crates.io 0.4.1 crate (no [patch.crates-io]).
+# crypt4gh is the vendored fork (third_party/crypt4gh), same patch as Ferrum.
 
 [graph]
 targets            = []
@@ -10,18 +10,7 @@ exclude-unpublished = true
 [advisories]
 yanked       = "warn"
 unmaintained = "workspace"
-ignore       = [
-    # crypt4gh 0.4.1 is the crates.io crate (workspace.dependencies). No [patch.crates-io].
-    { id = "RUSTSEC-2022-0011", reason = "rust-crypto 0.2.36 via crates.io crypt4gh 0.4.1. No safe upgrade. Not changed here." },
-    { id = "RUSTSEC-2022-0004", reason = "rustc-serialize 0.3.25 via rust-crypto 0.2.36 via crates.io crypt4gh 0.4.1. No safe upgrade. Not changed here." },
-    { id = "RUSTSEC-2020-0071", reason = "time 0.1.45 via rust-crypto 0.2.36 via crates.io crypt4gh 0.4.1. Patched in time >=0.2.23, which this dependency line does not use. Not upgraded here." },
-    { id = "RUSTSEC-2026-0190", reason = "anyhow 1.0.102 Error::downcast_mut unsoundness. Patched in anyhow >=1.0.103. Not upgraded here." },
-    # reqwest 0.11.27 -> hyper 0.14 / rustls 0.21. Both locked h2 versions are below the fix.
-    { id = "RUSTSEC-2026-0258", reason = "h2 0.3.27 and h2 0.4.14 via hyper and reqwest 0.11.27. Patched in h2 >=0.4.16. Not upgraded here." },
-    { id = "RUSTSEC-2026-0098", reason = "rustls-webpki 0.101.7 via rustls 0.21.12 and reqwest 0.11.27. URI name constraints. Patched in >=0.103.12; rustls 0.21 cannot take that series. Not upgraded here." },
-    { id = "RUSTSEC-2026-0099", reason = "rustls-webpki 0.101.7 via rustls 0.21.12 and reqwest 0.11.27. Wildcard name constraints. Patched in >=0.103.12; rustls 0.21 cannot take that series. Not upgraded here." },
-    { id = "RUSTSEC-2026-0104", reason = "rustls-webpki 0.101.7 via rustls 0.21.12 and reqwest 0.11.27. CRL parse panic. Patched in >=0.103.13; rustls 0.21 cannot take that series. Not upgraded here." },
-]
+ignore       = []
 
 [licenses]
 version              = 2
@@ -34,9 +23,8 @@ allow = [
     "BSD-3-Clause",
     "ISC",
     "Unicode-3.0",
-    # webpki-roots 0.25.4 (via reqwest 0.11.27) is MPL-2.0 only. File-level copyleft.
-    # Kept because this change does not upgrade dependencies.
-    "MPL-2.0",
+    # webpki-roots 1.0.9 (via reqwest 0.12) is CDLA-Permissive-2.0.
+    "CDLA-Permissive-2.0",
 ]
 [licenses.private]
 ignore = true
@@ -45,12 +33,6 @@ ignore = true
 name          = "ring"
 expression    = "ISC AND MIT AND OpenSSL"
 license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
-
-[[licenses.clarify]]
-name       = "fuchsia-cprng"
-version    = "0.1.1"
-expression = "BSD-3-Clause"
-license-files = [{ path = "LICENSE", hash = 0xf04ece33 }]
 
 [bans]
 multiple-versions = "warn"
