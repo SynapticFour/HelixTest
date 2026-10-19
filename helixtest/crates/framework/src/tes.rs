@@ -33,7 +33,7 @@ async fn level0_reachable(cfg: &TestConfig, client: &HttpClient) -> TestCaseResu
     let url = format!("{}/tasks", cfg.services.tes_url.trim_end_matches('/'));
     level0_http(
         "TES /tasks reachable",
-        client.inner().get(&url).send().await,
+        client.get_builder(&url).send().await,
     )
 }
 
@@ -47,7 +47,7 @@ async fn level1_task_schema(cfg: &TestConfig, client: &HttpClient) -> TestCaseRe
                 "command": ["echo", "hello-tes"]
             }]
         });
-        let resp = client.inner().post(&url).json(&body).send().await?;
+        let resp = client.post_builder(&url).json(&body).send().await?;
         if !resp.status().is_success() {
             anyhow::bail!("TES task submission failed: {}", resp.status());
         }
@@ -80,7 +80,7 @@ async fn level1_task_schema(cfg: &TestConfig, client: &HttpClient) -> TestCaseRe
 }
 
 async fn download_sha256(client: &HttpClient, url: &str) -> Result<String> {
-    let resp = client.inner().get(url).send().await?;
+    let resp = client.get_builder(url).send().await?;
     if !resp.status().is_success() {
         anyhow::bail!("TES output download failed: {}", resp.status());
     }
@@ -114,7 +114,7 @@ async fn level2_task_lifecycle_and_checksum(
                 "command": ["sh", "-c", "echo hello-tes > /test-data/workflows/outputs/tes_echo_out.txt"]
             }]
         });
-        let resp = client.inner().post(&url).json(&body).send().await?;
+        let resp = client.post_builder(&url).json(&body).send().await?;
         if !resp.status().is_success() {
             anyhow::bail!("TES task submission failed: {}", resp.status());
         }

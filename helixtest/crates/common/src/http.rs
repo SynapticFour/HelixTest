@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::logging::init_logging;
 use anyhow::Result;
-use reqwest::{Client, Response};
+use reqwest::header::{HeaderValue, AUTHORIZATION};
+use reqwest::{Client, RequestBuilder, Response};
+use std::sync::OnceLock;
 use std::time::Duration;
 use tokio_retry::strategy::{jitter, ExponentialBackoff};
 use tokio_retry::Retry;
@@ -11,6 +13,66 @@ const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const GET_RETRY_ATTEMPTS: usize = 2;
 const BODY_LOG_CHARS: usize = 256;
+
+/// Optional Bearer for gateway-host requests only (not third-party access_url downloads).
+/// Set `TEST_BEARER` when Contabo/execution-gate requires Passport on WES/TES.
+/// Host allowlist: `GATEWAY_BASE` host, plus comma-separated `HELIXTEST_BEARER_HOSTS`.
+fn test_bearer() -> Option<&'static str> {
+    static TOKEN: OnceLock<Option<String>> = OnceLock::new();
+    TOKEN
+        .get_or_init(|| {
+            let raw = std::env::var("TEST_BEARER").ok()?;
+            let t = raw.trim().to_string();
+            if t.is_empty() {
+                None
+            } else {
+                info!("TEST_BEARER set; Authorization attached only for gateway hosts");
+                Some(t)
+            }
+        })
+        .as_deref()
+}
+
+fn host_allows_bearer(url: &str) -> bool {
+    let Ok(parsed) = reqwest::Url::parse(url) else {
+        return false;
+    };
+    let Some(host) = parsed.host_str() else {
+        return false;
+    };
+    let mut allowed = Vec::new();
+    if let Ok(base) = std::env::var("GATEWAY_BASE") {
+        if let Ok(u) = reqwest::Url::parse(&base) {
+            if let Some(h) = u.host_str() {
+                allowed.push(h.to_string());
+            }
+        }
+    }
+    if let Ok(extra) = std::env::var("HELIXTEST_BEARER_HOSTS") {
+        for h in extra.split(',') {
+            let h = h.trim();
+            if !h.is_empty() {
+                allowed.push(h.to_string());
+            }
+        }
+    }
+    if allowed.is_empty() {
+        return false;
+    }
+    allowed.iter().any(|h| host.eq_ignore_ascii_case(h))
+}
+
+fn maybe_bearer(builder: RequestBuilder, url: &str) -> RequestBuilder {
+    match test_bearer() {
+        Some(token) if host_allows_bearer(url) => {
+            match HeaderValue::from_str(&format!("Bearer {token}")) {
+                Ok(value) => builder.header(AUTHORIZATION, value),
+                Err(_) => builder,
+            }
+        }
+        _ => builder,
+    }
+}
 
 #[derive(Clone)]
 pub struct HttpClient {
@@ -31,6 +93,7 @@ impl HttpClient {
 
     /// Build an HTTP client with a custom request timeout (for tests or strict timeouts).
     pub fn with_timeout(timeout: Duration) -> Self {
+        let _ = test_bearer();
         let inner = Client::builder()
             .connect_timeout(DEFAULT_CONNECT_TIMEOUT.min(timeout))
             .timeout(timeout)
@@ -41,6 +104,16 @@ impl HttpClient {
 
     pub fn inner(&self) -> &Client {
         &self.inner
+    }
+
+    /// GET builder with optional `TEST_BEARER` for gateway hosts only.
+    pub fn get_builder(&self, url: &str) -> RequestBuilder {
+        maybe_bearer(self.inner.get(url), url)
+    }
+
+    /// POST builder with optional `TEST_BEARER` for gateway hosts only.
+    pub fn post_builder(&self, url: &str) -> RequestBuilder {
+        maybe_bearer(self.inner.post(url), url)
     }
 
     #[instrument(skip(self))]
@@ -75,9 +148,7 @@ impl HttpClient {
             body_prefix = %truncate_for_log(&body_str),
             "POST request"
         );
-        let resp = self
-            .inner
-            .post(url)
+        let resp = maybe_bearer(self.inner.post(url), url)
             .header("Content-Type", "application/json")
             .body(body_str)
             .send()
@@ -109,7 +180,14 @@ impl HttpClient {
         let strategy = ExponentialBackoff::from_millis(200)
             .map(jitter)
             .take(GET_RETRY_ATTEMPTS);
-        let resp = Retry::spawn(strategy, || async { self.inner.get(url).send().await }).await?;
+        let url = url.to_string();
+        let client = self.inner.clone();
+        let resp = Retry::spawn(strategy, || {
+            let client = client.clone();
+            let url = url.clone();
+            async move { maybe_bearer(client.get(&url), &url).send().await }
+        })
+        .await?;
         Ok(resp)
     }
 }
@@ -280,5 +358,17 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(v.get("ok").and_then(|x| x.as_bool()), Some(true));
+    }
+
+    #[test]
+    fn host_allows_bearer_matches_gateway_base_only() {
+        std::env::set_var("GATEWAY_BASE", "https://ferrum.demo.synapticfour.tech");
+        std::env::remove_var("HELIXTEST_BEARER_HOSTS");
+        assert!(host_allows_bearer(
+            "https://ferrum.demo.synapticfour.tech/ga4gh/wes/v1/runs"
+        ));
+        assert!(!host_allows_bearer(
+            "https://raw.githubusercontent.com/ga4gh/data-repository-service-schemas/master/README.md"
+        ));
     }
 }
