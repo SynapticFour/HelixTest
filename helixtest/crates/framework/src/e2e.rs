@@ -4,6 +4,8 @@
 //! **Scope:** This module drives WES to **terminal `COMPLETE`** via `common::workflow::poll_wes_run_until_terminal`.
 //! It does **not** poll TES. Full TRS→…→TES coupling lives in the `e2e-tests` crate only when
 //! the mock stack defines that contract.
+//!
+//! With `execution_allowlist`, the WES step uses the host allowlist id (not stub `trs://` tools).
 
 use anyhow::{Context, Result};
 use common::config::TestConfig;
@@ -17,6 +19,7 @@ use serde_json::Value;
 use std::time::Duration;
 use url::Url;
 
+use crate::allowlist::AllowlistExec;
 use crate::{level0_http, Features, Mode};
 
 fn preferred_drs_input_uri(drs_obj: &Value, drs_id: &str) -> String {
@@ -30,7 +33,7 @@ fn preferred_drs_input_uri(drs_obj: &Value, drs_id: &str) -> String {
 
 pub async fn run_e2e_checks(
     _mode: Mode,
-    _features: &Features,
+    features: &Features,
     cfg: &TestConfig,
     client: &HttpClient,
 ) -> Result<ServiceReport> {
@@ -40,7 +43,11 @@ pub async fn run_e2e_checks(
         "E2E TRS /tools reachable",
         client.inner().get(&tools_url).send().await,
     ));
-    tests.push(e2e_trs_drs_wes_tes_drs_beacon_pipeline(cfg, client).await);
+    if features.execution_allowlist {
+        tests.push(e2e_allowlist_pipeline(cfg, client).await);
+    } else {
+        tests.push(e2e_trs_drs_wes_tes_drs_beacon_pipeline(cfg, client).await);
+    }
     Ok(ServiceReport {
         service: ServiceKind::E2e,
         tests,
@@ -58,6 +65,113 @@ async fn e2e_trs_drs_wes_tes_drs_beacon_pipeline(
         TestCategory::Interoperability,
         result,
     )
+}
+
+async fn e2e_allowlist_pipeline(cfg: &TestConfig, client: &HttpClient) -> TestCaseResult {
+    let result = run_e2e_allowlist_pipeline(cfg, client).await;
+    TestCaseResult::from_outcome(
+        "E2E TRS→DRS→WES allowlist→DRS output→Beacon (real gate; no stubs)",
+        ComplianceLevel::Level3,
+        TestCategory::Interoperability,
+        result,
+    )
+}
+
+async fn run_e2e_allowlist_pipeline(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
+    let al = AllowlistExec::from_env()?;
+
+    let tools_url = format!("{}/tools", cfg.services.trs_url.trim_end_matches('/'));
+    let tools_val = client.get_json(&tools_url).await?;
+    let tools = tools_val
+        .as_array()
+        .ok_or_else(|| anyhow::anyhow!("TRS /tools must return array"))?;
+    if tools.is_empty() {
+        anyhow::bail!("TRS must expose at least one tool");
+    }
+
+    let object_id = al.input_drs_object_id();
+    let drs_url = format!(
+        "{}/objects/{}",
+        cfg.services.drs_url.trim_end_matches('/'),
+        object_id
+    );
+    let drs_obj = client.get_json(&drs_url).await?;
+    let drs_id = drs_obj
+        .get("id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("DRS object missing id: {}", drs_obj))?;
+
+    let req = WesRunRequest {
+        workflow_url: al.wes_workflow_id.clone(),
+        workflow_type: "s4-allowlist".to_owned(),
+        workflow_type_version: "1".to_owned(),
+        tags: None,
+        workflow_params: serde_json::json!({
+            "input_drs_uri": preferred_drs_input_uri(&drs_obj, drs_id)
+        }),
+    };
+    let run_id = submit_wes_run(client, &cfg.services.wes_url, &req).await?;
+
+    let status = poll_wes_run_until_terminal(
+        client,
+        &cfg.services.wes_url,
+        &run_id,
+        Duration::from_secs(600),
+        Duration::from_secs(5),
+    )
+    .await?;
+    if status.state != "COMPLETE" {
+        anyhow::bail!(
+            "E2E allowlist pipeline expected COMPLETE, got {}",
+            status.state
+        );
+    }
+
+    let outputs = fetch_wes_run_output(client, &cfg.services.wes_url, &run_id).await?;
+    let result_uri = outputs
+        .get("result")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Missing outputs.result in: {}", outputs))?;
+    let out_id = result_uri
+        .strip_prefix("drs://")
+        .unwrap_or(result_uri)
+        .trim_start_matches('/');
+    let drs_out_url = format!(
+        "{}/objects/{}",
+        cfg.services.drs_url.trim_end_matches('/'),
+        out_id
+    );
+    let _drs_out = client.get_json(&drs_out_url).await?;
+
+    beacon_smoke(cfg, client).await?;
+    Ok(())
+}
+
+async fn beacon_smoke(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
+    let beacon_url = format!("{}/query", cfg.services.beacon_url.trim_end_matches('/'));
+    let beacon_resp = client
+        .post_json(
+            &beacon_url,
+            &serde_json::json!({
+                "meta": { "apiVersion": "v2.0.0" },
+                "query": {
+                    "requestParameters": {
+                        "referenceName": "1",
+                        "start": 1000,
+                        "referenceBases": "A",
+                        "alternateBases": "T"
+                    }
+                }
+            }),
+        )
+        .await?;
+    let exists = beacon_resp
+        .pointer("/response/exists")
+        .and_then(|v| v.as_bool());
+    if exists == Some(false) {
+        anyhow::bail!("Beacon reported exists=false after E2E pipeline");
+    }
+    Ok(())
 }
 
 async fn run_e2e_pipeline(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
@@ -195,29 +309,6 @@ async fn run_e2e_pipeline(cfg: &TestConfig, client: &HttpClient) -> Result<()> {
         );
     }
 
-    let beacon_url = format!("{}/query", cfg.services.beacon_url.trim_end_matches('/'));
-    let beacon_resp = client
-        .post_json(
-            &beacon_url,
-            &serde_json::json!({
-                "meta": { "apiVersion": "v2.0.0" },
-                "query": {
-                    "requestParameters": {
-                        "referenceName": "1",
-                        "start": 1000,
-                        "referenceBases": "A",
-                        "alternateBases": "T"
-                    }
-                }
-            }),
-        )
-        .await?;
-    let exists = beacon_resp
-        .pointer("/response/exists")
-        .and_then(|v| v.as_bool());
-    if exists == Some(false) {
-        anyhow::bail!("Beacon reported exists=false after E2E pipeline");
-    }
-
+    beacon_smoke(cfg, client).await?;
     Ok(())
 }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pub mod africa;
+pub mod allowlist;
 pub mod auth;
 pub mod beacon;
 pub mod checker_identity;
@@ -61,6 +62,10 @@ pub struct Features {
     pub supports_beacon_v2: bool,
     #[serde(default)]
     pub strict_drs_checksums: bool,
+    /// When true, WES/TES/E2E use host execution-allowlist workflows (env-configured).
+    /// Synthetic `trs://test-tool/…` / free `alpine` echo paths stay for stub hosts only.
+    #[serde(default)]
+    pub execution_allowlist: bool,
 }
 
 fn parse_features_file(path: &Path) -> anyhow::Result<Features> {

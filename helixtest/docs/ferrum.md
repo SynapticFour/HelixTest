@@ -40,6 +40,25 @@ The Ferrum profile sets:
 
 Override endpoints via `HELIXTEST_CONFIG` or environment variables (`WES_URL`, etc.) if your deployment uses different hosts or paths.
 
+## Profile: `profiles/ferrum-public.toml` (execution allowlist)
+
+For hosts that enforce a **server-side WES/TES allowlist** (e.g. public demos with HelixTest stubs **off**), use this profile instead of synthetic `trs://test-tool/…` / free `alpine` echo.
+
+- **[features]** – `execution_allowlist = true`, `supports_scatter_gather = false`, Beacon/DRS strict flags on.
+- **Success:** WES `workflow_url` = allowlist id; TES body = pinned image + command + input DRS. Poll to `COMPLETE`; assert DRS output.
+- **Deny:** Non-allowlisted WES URLs must return **HTTP 403** (not stub `EXECUTOR_ERROR`).
+- **Fail closed:** every env below is required when `execution_allowlist` is true.
+
+| Env | Example |
+|-----|---------|
+| `HELIXTEST_WES_ALLOWLIST_ID` | `checksum-synthetic-variants` |
+| `HELIXTEST_TES_ALLOWLIST_ID` | `checksum-synthetic-variants` |
+| `HELIXTEST_TES_ALLOWLIST_IMAGE` | `docker.io/library/alpine:3.20.3@sha256:…` (full digest) |
+| `HELIXTEST_TES_ALLOWLIST_COMMAND` | `["/work/in/variants.vcf"]` (JSON array) |
+| `HELIXTEST_ALLOWLIST_INPUT_DRS` | `drs://synthetic-variants` |
+
+Auth HMAC and Crypt4GH HTTP stay skipped/off unless you configure them separately. **Not GA4GH certification.**
+
 ### htsget 1.3.0 (Ferrum `ferrum-htsget`)
 
 Ferrum mounts GA4GH **htsget 1.3.0** at **`/ga4gh/htsget/v1`** (see [Ferrum](https://github.com/SynapticFour/Ferrum)). HelixTest resolves the htsget base automatically when:

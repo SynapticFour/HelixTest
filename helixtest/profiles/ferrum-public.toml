@@ -1,0 +1,23 @@
+# Public demo / execution-gate hosts (no HelixTest WES/TES stubs).
+# Success paths use allowlisted workflow ids; non-allowlisted submits expect HTTP 403.
+# Wire env: HELIXTEST_WES_ALLOWLIST_ID, HELIXTEST_TES_ALLOWLIST_ID,
+# HELIXTEST_TES_ALLOWLIST_IMAGE, HELIXTEST_TES_ALLOWLIST_COMMAND,
+# HELIXTEST_ALLOWLIST_INPUT_DRS. Fail closed if any are missing when this profile is used.
+#
+# Auth HMAC suite stays skipped via HELIXTEST_SKIP_AUTH on Passport demos.
+# Crypt4GH HTTP stays off unless HELIXTEST_FEATURE_CRYPT4GH_* is set.
+# Not GA4GH certification.
+
+[services]
+wes = "http://localhost:8080/ga4gh/wes/v1"
+tes = "http://localhost:8080/ga4gh/tes/v1"
+drs = "http://localhost:8080/ga4gh/drs/v1"
+trs = "http://localhost:8080/ga4gh/trs/v2"
+beacon = "http://localhost:8080/ga4gh/beacon/v2"
+auth = "http://localhost:8080/passports/v1"
+
+[features]
+execution_allowlist = true
+supports_scatter_gather = false
+supports_beacon_v2 = true
+strict_drs_checksums = true

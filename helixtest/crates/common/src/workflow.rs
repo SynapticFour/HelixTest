@@ -52,6 +52,19 @@ pub async fn submit_wes_run(
     Ok(run_id.to_owned())
 }
 
+/// Submit a WES run; return HTTP status and response body (JSON or text).
+/// Used when the host may deny with 403 (execution allowlist) instead of accepting a run.
+pub async fn submit_wes_run_status(
+    client: &HttpClient,
+    wes_url: &str,
+    req: &WesRunRequest,
+) -> Result<(u16, String)> {
+    let url = format!("{}/runs", wes_url.trim_end_matches('/'));
+    let body = serde_json::to_value(req)?;
+    let (status, text) = client.post_raw(&url, &body).await?;
+    Ok((status.as_u16(), text))
+}
+
 /// Poll WES `/runs/{id}/status` until a terminal state or `timeout`.
 ///
 /// Intermediate non-terminal states may repeat; transitions must be monotonic in phase order

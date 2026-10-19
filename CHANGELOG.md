@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Profile `ferrum-public` + `execution_allowlist`: WES/TES/E2E against host allowlist workflows (env-configured). Success runs real digest-pinned tasks; non-allowlisted WES submits expect HTTP 403. Fail closed if allowlist env is missing. Stub `trs://test-tool/…` path remains for `ferrum.toml` / CI stubs. See [helixtest/docs/ferrum.md](helixtest/docs/ferrum.md).
 - Optional `TEST_BEARER`: attach `Authorization` to gateway-host requests only (`GATEWAY_BASE` / `HELIXTEST_BEARER_HOSTS`), not third-party DRS `access_url` downloads. TES create/status use the same path. Contabo demo: Passport clears Bearer; execution-gate may still 403 non-allowlisted workflows.
 - Profile `edge` runs DRS, Beacon, htsget, and Crypt4GH against the Ferrum edge binary. WES, TES, TRS, and Passports are skipped with a stated reason and are not reported as passed. `helixtest/fixtures/edge/` seeds DRS `test-object-1` from a small synthetic file. See [docs/edge-profile.md](docs/edge-profile.md).
 - [docs/third-party-targets.md](docs/third-party-targets.md) records the 2026-10 Sapporo, Funnel, Starter Kit DRS, and beacon2-pi-api attempts. No third-party profile was added.

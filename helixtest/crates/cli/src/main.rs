@@ -150,6 +150,13 @@ fn resolve_profile(args: &Args) -> Option<String> {
     if let Some(p) = &args.profile {
         return Some(p.clone());
     }
+    // Same env as TestConfig::load — features and endpoints must agree.
+    if let Ok(p) = std::env::var("HELIXTEST_PROFILE") {
+        let trimmed = p.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_owned());
+        }
+    }
     match args.mode {
         Mode::FerrumAfrica => Some("ferrum-africa".into()),
         Mode::FerrumInfra => Some("ferrum-infra".into()),

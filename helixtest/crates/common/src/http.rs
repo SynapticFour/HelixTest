@@ -141,6 +141,26 @@ impl HttpClient {
         url: &str,
         body: &serde_json::Value,
     ) -> Result<serde_json::Value> {
+        let (status, text) = self.post_raw(url, body).await?;
+        if !status.is_success() {
+            anyhow::bail!(
+                "POST {} failed with HTTP {}: {}",
+                url,
+                status,
+                truncate_for_log(&text)
+            );
+        }
+        let value: serde_json::Value = serde_json::from_str(&text)?;
+        Ok(value)
+    }
+
+    /// POST once; return status + body text (success or error). For allowlist deny checks.
+    #[instrument(skip(self, body))]
+    pub async fn post_raw(
+        &self,
+        url: &str,
+        body: &serde_json::Value,
+    ) -> Result<(reqwest::StatusCode, String)> {
         let body_str = body.to_string();
         debug!(
             %url,
@@ -162,16 +182,7 @@ impl HttpClient {
             body_prefix = %truncate_for_log(&text),
             "POST response"
         );
-        if !status.is_success() {
-            anyhow::bail!(
-                "POST {} failed with HTTP {}: {}",
-                url,
-                status,
-                truncate_for_log(&text)
-            );
-        }
-        let value: serde_json::Value = serde_json::from_str(&text)?;
-        Ok(value)
+        Ok((status, text))
     }
 
     #[instrument(skip(self))]
