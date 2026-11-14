@@ -26,7 +26,7 @@ Ferrum, ga4gh-infra, Solum, and BioResearch Assistant sit alongside Helix/HelixT
 | Demo/benchmark | **Ferrum-GA4GH-Demo** | Reproducible GIAB benchmark; optional `--with-infra` |
 | Conformance | **HelixTest** | Automated API and workflow tests. VERIFY brand: [Helix](https://github.com/SynapticFour/Helix). |
 
-HelixTest **validates** implementations; it does not ship GA4GH services. Ferrum runs this suite in CI. See [helixtest/docs/ferrum.md](helixtest/docs/ferrum.md).
+HelixTest **validates** implementations; it does not ship GA4GH services. Ferrum runs this suite in CI. See [../helixtest/docs/ferrum.md](../helixtest/docs/ferrum.md).
 
 ## Default co-deploy ports
 
@@ -100,7 +100,7 @@ helixtest --all --mode ferrum+infra --profile ferrum-infra
 | Topic | Document |
 |-------|----------|
 | Ferrum ↔ ga4gh-infra wiring | [Ferrum GA4GH-INFRA-INTEGRATION.md](https://github.com/SynapticFour/Ferrum/blob/main/docs/GA4GH-INFRA-INTEGRATION.md) |
-| Ferrum testing guide | [helixtest/docs/ferrum.md](helixtest/docs/ferrum.md) |
+| Ferrum testing guide | [../helixtest/docs/ferrum.md](../helixtest/docs/ferrum.md) |
 | Demo compose merge order | [Ferrum-GA4GH-Demo architecture.md](https://github.com/SynapticFour/Ferrum-GA4GH-Demo/blob/main/docs/architecture.md) |
 | Lab co-deploy profiles | [field-edge+infra.toml](https://github.com/SynapticFour/Ferrum-Lab-Kit/blob/main/config/profiles/field-edge+infra.toml) |
 | Africa-Mode (SQLite) | [ga4gh-infra AFRICA-DEPLOYMENT](https://github.com/SynapticFour/ga4gh-infra/blob/main/docs/AFRICA-DEPLOYMENT.md) |
