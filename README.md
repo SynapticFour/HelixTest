@@ -1,78 +1,82 @@
-# HelixTest — GA4GH Conformance Suite
+# HelixTest
 
-HelixTest is a Rust-based conformance and integration test suite for GA4GH-style platforms. The CLI binary is **`helixtest`** (Apache-2.0). Point it at a running GA4GH API — including Ferrum.
+HelixTest checks a service that is already running against GA4GH interfaces, a shared set of interfaces for genomic and health data. The command is `helixtest`.
 
-HelixTest checks behaviour against the GA4GH spec, independent of implementation. The VERIFY CLI around this suite is [Helix](https://github.com/SynapticFour/Helix) (binary `helix`). HELIOS is a different tool (signed pipeline evidence). Ferrum is a convenient reference target, not a dependency.
+For a team that runs that service and wants the check from outside it.
 
-> HelixTest does not run servers. Start a target first (Ferrum, ga4gh-infra, or both), then run HelixTest against it. See **[docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)** for lifecycle commands on sibling repos.
+**Status: Early use.** Registry: HELIXTEST-MATURITY-001. Early use is not general availability and not a certification. HelixTest checks Synaptic Four's own products. The repository shows the status of each version.
 
-Scope boundary: HelixTest remains **GA4GH-focused**. MII/KDS checks live in Ferrum / Ferrum-Lab-Kit integration layers.
+[Helix](https://github.com/SynapticFour/Helix) is this suite as the `helix` command. [HELIOS](https://github.com/SynapticFour/HELIOS) stays signed evidence for a file already on disk. HelixTest does not sign evidence and does not start a server.
 
-### Quick start
+## What it does
 
-**Prerequisites:** [Rust](https://rustup.rs) 1.88+ (MSRV encoded as `rust-version` in the workspace). Binary install without cloning: **[docs/INSTALL.md](docs/INSTALL.md)**.
+- It points at a GA4GH API that is already running, including Ferrum. It does not start that API. Registry: TOOL-HELIXTEST-USE-001.
+- It checks behaviour against the interface description, independent of which program implements it. Ferrum is a reference target, not a dependency.
+- `make prove` runs the workspace tests, an SPDX check, and a release build of `helixtest`. Four tests that need a live target are ignored. `make test-live` runs them only when someone asks, and it does not start a server. Registry: TOOL-HELIXTEST-STATUS-001.
+- A passing run is this project's own check. It is not GA4GH certification.
+
+## Limits
+
+- Early use is not general availability and not a certificate. Registry: HELIXTEST-MATURITY-001.
+- It does not start Ferrum, ga4gh-infra, or any other server.
+- Runs in October 2026 against other vendors' servers showed that dedicated profiles are needed. No comparison or ranking follows, and they are not evidence that an implementation conforms. Registry: HELIXTEST-COMPARE-001. The write-up is [docs/third-party-targets.md](docs/third-party-targets.md).
+- Profiles for servers from other vendors are in progress. Registry: HELIX-OPEN-001. `profiles/ga4gh-drs.toml` on this branch only selects DRS checks.
+- The published tag `v0.1.3` peels to `1832c043e1679ec283cb2113510ee33684317cce`. This default branch is `1926dbdd7c70985a3ab3b7b623a782e05f994453` (`v0.1.3-35-g1926dbd`). The tag is the release lineage. It is not this commit.
+- MII and KDS checks live in Ferrum and Ferrum-Lab-Kit. This suite stays on GA4GH interfaces.
+- This page describes technical behaviour. It is not legal advice and it does not by itself provide a regulatory certificate.
+
+## Quick start
+
+Prerequisites: Rust 1.91.1, pinned in `rust-toolchain.toml`. The workspace minimum is Rust 1.88.
 
 ```bash
-git clone https://github.com/SynapticFour/HelixTest.git && cd HelixTest
 make prove
 ```
 
-Live against a platform you started: **[docs/PROVE.md](docs/PROVE.md)**. CI on `main` / PRs runs the same `make prove` (workspace tests + release CLI). Four tests that need a live target are ignored; `make test-live` runs them, and CI runs that target only on a manual dispatch. Third-party GitHub Actions: [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) (default binaries **v0.1.3**, same as the suite pin; does not start Ferrum). VERIFY brand: [Helix](https://github.com/SynapticFour/Helix).
+You should see the line `HelixTest prove OK. Binary: target/release/helixtest`.
 
-**Run against a local Ferrum demo** (start Ferrum first — see [Ferrum README](https://github.com/SynapticFour/Ferrum)):
+Against a service you already started: [Ferrum](https://github.com/SynapticFour/Ferrum), then `helixtest --all --mode ferrum` from this repository. This tool does not start that service. The commands are in [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 
-```bash
-# In Ferrum repo: make up
-helixtest --all --mode ferrum
-# Same DRS checks as the mock (reference target):
-helixtest --all --mode ferrum --only drs
-```
+## Documentation
 
-**Run against any DRS** (not Ferrum):
+Every file under `docs/` is listed in [docs/README.md](docs/README.md). The groups are a tutorial, how-to guides, reference, and explanation.
 
-```bash
-DRS_URL=http://127.0.0.1:$PORT helixtest --all --mode generic --only drs --profile ga4gh-drs --report json
-```
+### Tutorial
 
-**Co-deploy (Ferrum + ga4gh-infra):**
+- [Getting started](docs/GETTING-STARTED.md)
+- [Install without cloning](docs/INSTALL.md)
+- [What prove runs](docs/PROVE.md)
 
-```bash
-# In Ferrum-GA4GH-Demo: make up-with-infra
-helixtest --all --mode ferrum+infra --profile ferrum-infra
-```
+### How-to guides
 
-| Command | Purpose |
-|---------|---------|
-| `helixtest --all --mode ferrum` | Full suite against Ferrum demo stack |
-| `helixtest --all --mode ferrum+infra --profile ferrum-infra` | Co-deploy broker + Passport-on-DRS |
-| `helixtest --all --mode ferrum+infra --profile ferrum-infra-pilot` | Same against Ferrum `make up-pilot-local` (:8080) |
-| `helixtest --all --profile edge` | Ferrum edge binary: DRS, Beacon, htsget, Crypt4GH. WES, TES, TRS, and Passports are skipped. See [docs/edge-profile.md](docs/edge-profile.md) |
-| `helixtest --all --only wes --mode ferrum` | Single service |
-| `helixtest --help` | All flags, report formats, fail levels |
+- [Edge profile](docs/edge-profile.md)
+- [Sibling repositories](docs/ECOSYSTEM.md)
 
-2026-10 runs against Sapporo, Funnel, the Starter Kit DRS, and beacon2-pi-api are written up in [docs/third-party-targets.md](docs/third-party-targets.md). That page does not add a profile for those servers.
+### Reference
 
-**Exit codes (Uniklinik IT):** `0` = suite met `--fail-level`; `1` = failures (or usage error). `--report table` is the human report; `--report json` is for CI. Example: a Beacon 404 prints the URL and expected status — start the target (`make up` in Ferrum) before re-running.
+- [For evaluators](docs/FOR-EVALUATORS.md)
+- [Third-party targets](docs/third-party-targets.md)
+- [Changelog](CHANGELOG.md)
 
-Full usage, architecture, and CI integration: **[helixtest/README.md](helixtest/README.md)**. Known limitations: **[helixtest/docs/known-limitations.md](helixtest/docs/known-limitations.md)**.
+### Explanation
 
-### Test areas
+- [Architecture](docs/ARCHITECTURE.md)
 
-- **API contract tests** for WES, TES, DRS, TRS, Beacon v2
-- **Workflow execution tests** for CWL, WDL, Nextflow via WES
-- **Cross-service E2E tests** spanning TRS → DRS → WES → TES → Beacon
-- **Authorization tests**: default suite uses an **HMAC-SHA256 JWT fixture** (shared secret). **GA4GH Passports / OIDC** are exercised in `--mode ferrum+infra`
-- **Co-deploy tests** via `--mode ferrum+infra` and profile `ferrum-infra`
-- **Cryptographic tests**: local checks use **age** (not Crypt4GH containers). Optional Ferrum HTTP **Crypt4GH** rewrap/decrypt_plain is env-gated. Compose files live under `helixtest/docker/`
+## Licence
 
-For Ferrum-specific guidance: [helixtest/docs/ferrum.md](helixtest/docs/ferrum.md). **CI vs full stack:** noop TES in CI; Docker TES documented in [helixtest/docs/adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md](helixtest/docs/adr/0001-ferrum-tes-ci-vs-docker-stack-and-db-init.md).
+HelixTest is free to use under the Apache License 2.0, and you can read the source. Registry: TOOL-HELIXTEST-LICENSE-001. Not legal advice. The file is [LICENSE](LICENSE).
 
-> **Legal notice:** This repository documents technical capabilities and operating guidance. It is not legal advice and does not by itself provide regulatory certification or compliance guarantees.
+## Cite
 
-**Disclaimer:** Test results do not constitute official GA4GH certification. See [LICENSE](LICENSE).
+Use [CITATION.cff](CITATION.cff). Prefer that file over a hand-copied line.
 
-Profiles for third-party servers are not yet available. `profiles/ga4gh-drs.toml` on this branch only selects DRS checks; it does not describe Sapporo, Funnel, Starter Kit DRS, or beacon2-pi-api. Tag v0.1.3 did not include that profile file. A first attempt in 2026-10 ran HelixTest v0.1.3 against pinned images of those servers and produced failures. Part of those failures are tool issues (WES submit as JSON where the vendored schema allows only multipart, TES MINIMAL view checked as a full task, DRS cases that require fixture `test-object-1`, Beacon checks that POST `/query`). Those failures are not a ranking and not target non-conformance by themselves.
+## Website
 
----
+- Open tools: [https://synapticfour.com/en/offene-werkzeuge/](https://synapticfour.com/en/offene-werkzeuge/)
+- Technical profile: [https://synapticfour.com/en/technical/code/](https://synapticfour.com/en/technical/code/)
 
-**Synaptic Four** · [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com) · Apache-2.0 (free)
+The same pages exist in German (`/de/offene-werkzeuge/`, `/de/technik/code/`) and in French (`/fr/offene-werkzeuge/`, `/fr/technique/code/`).
+
+The map of repositories: [profile/README.md](https://github.com/SynapticFour/.github/blob/main/profile/README.md).
+
+Contact: [contact@synapticfour.com](mailto:contact@synapticfour.com)
