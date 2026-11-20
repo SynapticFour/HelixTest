@@ -10,7 +10,11 @@ exclude-unpublished = true
 [advisories]
 yanked       = "warn"
 unmaintained = "workspace"
-ignore       = []
+ignore       = [
+    # chrono: "unmaintained" notice only (no vulnerability, no patched version). Same decision
+    # as Ferrum (deny.toml, issue "Replace chrono with jiff or time"); revisit by 2027-03-31.
+    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained (no vulnerability); migration tracked with Ferrum, revisit by 2027-03-31" },
+]
 
 [licenses]
 version              = 2

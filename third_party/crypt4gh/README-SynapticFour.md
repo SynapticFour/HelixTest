@@ -17,3 +17,9 @@ Crypt4GH payload encryption already uses libsodium ChaCha20-Poly1305.
 This fork replaces `rust-crypto` with RustCrypto `aes`, `ctr`, `cbc`, `scrypt`, and `bcrypt-pbkdf`.
 
 Wired via `[patch.crates-io]` in the Ferrum workspace root `Cargo.toml`.
+
+## Command-line tool behind a feature (2026-11-20)
+
+`clap`, `pretty_env_logger` and `rpassword` are optional and the `crypt4gh` binary needs
+`--features bin`. HelixTest only uses the library, so these crates (and `atty`, unsound and
+unmaintained, which clap 3 pulls in) are no longer in HelixTest's dependency tree.
