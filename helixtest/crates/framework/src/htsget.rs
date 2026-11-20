@@ -672,29 +672,75 @@ fn ferrum_like(mode: Mode) -> bool {
     matches!(mode, Mode::Ferrum | Mode::FerrumAfrica | Mode::FerrumInfra)
 }
 
-/// Ferrum does not implement genomic slicing: POST `regions` must be 400 InvalidInput
-/// (not a silent whole-file ticket).
-async fn post_ticket_regions_unsupported(
+fn htsget_error_message(v: &Value) -> &str {
+    v.get("htsget")
+        .and_then(|h| h.get("message"))
+        .and_then(|m| m.as_str())
+        .unwrap_or("")
+}
+
+/// Why a Ferrum region/header request could not be served for the seeded object, if the error
+/// says so: no index object (404 NotFound) or a URL-backed placeholder (400 InvalidInput about
+/// storage). Those are setup gaps, reported as skip; any other error is a failure.
+fn ferrum_slice_setup_gap(status: u16, v: &Value) -> Option<String> {
+    let code = htsget_error_code(v)?;
+    let msg = htsget_error_message(v);
+    let lower = msg.to_ascii_lowercase();
+    if status == 404 && code == "NotFound" && lower.contains("index") {
+        return Some(format!(
+            "skipped: seeded object has no index ({msg}); register e.g. <name>.bai next to a real BAM to test region tickets"
+        ));
+    }
+    if status == 400 && code == "InvalidInput" && lower.contains("storage") {
+        return Some(format!(
+            "skipped: seeded object is not in node storage ({msg}); seed a stored BAM/VCF with index to test region tickets"
+        ));
+    }
+    None
+}
+
+/// A ticket for a region or header request must not be the whole object: at least one URL is
+/// a `data:` URL or carries a `Range` header.
+fn ticket_is_sliced(ticket: &Value) -> bool {
+    let Some(urls) = ticket
+        .get("htsget")
+        .and_then(|h| h.get("urls"))
+        .and_then(|u| u.as_array())
+    else {
+        return false;
+    };
+    urls.iter().any(|u| {
+        u.get("url")
+            .and_then(|x| x.as_str())
+            .is_some_and(|x| x.starts_with("data:"))
+            || u.get("headers")
+                .and_then(|h| h.as_object())
+                .is_some_and(|h| h.keys().any(|k| k.eq_ignore_ascii_case("range")))
+    })
+}
+
+/// Ferrum region / header tickets: 200 with a sliced ticket (Range headers or data: URLs)
+/// passes; a whole-object ticket fails; "no index" / "not in node storage" errors skip.
+async fn ferrum_sliced_ticket(
     client: &HttpClient,
+    method: reqwest::Method,
     url: &str,
     name: &str,
-    body: Value,
+    body: Option<Value>,
+    validate: fn(&Value) -> anyhow::Result<()>,
 ) -> TestCaseResult {
-    let resp = match client
-        .inner()
-        .post(url)
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await
-    {
+    let mut req = client.inner().request(method, url);
+    if let Some(b) = &body {
+        req = req.header("Content-Type", "application/json").json(b);
+    }
+    let resp = match req.send().await {
         Ok(r) => r,
         Err(e) => {
             return fail(
                 name,
                 ComplianceLevel::Level2,
-                TestCategory::Robustness,
-                format!("POST failed: {}", e),
+                TestCategory::Interoperability,
+                format!("request failed: {}", e),
             )
         }
     };
@@ -705,29 +751,57 @@ async fn post_ticket_regions_unsupported(
             return fail(
                 name,
                 ComplianceLevel::Level2,
-                TestCategory::Robustness,
+                TestCategory::Interoperability,
                 format!("read body: {}", e),
             )
         }
     };
     let v: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
-    if status.as_u16() == 400 && htsget_error_code(&v) == Some("InvalidInput") {
+    if status.is_success() {
+        if let Err(e) = validate(&v) {
+            return fail(
+                name,
+                ComplianceLevel::Level2,
+                TestCategory::Interoperability,
+                format!("ticket OpenAPI: {}", e),
+            );
+        }
+        if !ticket_is_sliced(&v) {
+            return fail(
+                name,
+                ComplianceLevel::Level2,
+                TestCategory::Interoperability,
+                "region/header request returned a whole-object ticket (no Range header, no data: URL)",
+            );
+        }
+        return TestCaseResult::pass(
+            name,
+            ComplianceLevel::Level2,
+            TestCategory::Interoperability,
+        );
+    }
+    if let Some(reason) = ferrum_slice_setup_gap(status.as_u16(), &v) {
         if let Err(e) = validate_htsget_error(&v) {
             return fail(
                 name,
                 ComplianceLevel::Level2,
-                TestCategory::Robustness,
-                format!("400 error body OpenAPI: {}", e),
+                TestCategory::Interoperability,
+                format!("error body OpenAPI: {}", e),
             );
         }
-        return TestCaseResult::pass(name, ComplianceLevel::Level2, TestCategory::Robustness);
+        return skip(
+            name,
+            ComplianceLevel::Level2,
+            TestCategory::Interoperability,
+            reason,
+        );
     }
     fail(
         name,
         ComplianceLevel::Level2,
-        TestCategory::Robustness,
+        TestCategory::Interoperability,
         format!(
-            "expected HTTP 400 InvalidInput for region slicing (no silent whole-file ticket), got {} err={:?} body {:.200}",
+            "expected a sliced ticket (or a 'no index' / 'not in node storage' error), got {} err={:?} body {:.200}",
             status,
             htsget_error_code(&v),
             text.chars().take(200).collect::<String>()
@@ -751,11 +825,13 @@ async fn level2_post_reads_ticket_with_regions(
         "regions": [{"referenceName": "chr1", "start": 0, "end": 1000}]
     });
     if ferrum_like(mode) {
-        return post_ticket_regions_unsupported(
+        return ferrum_sliced_ticket(
             client,
+            reqwest::Method::POST,
             &url,
-            "htsget POST reads ticket with regions → InvalidInput (Ferrum does not slice)",
-            body,
+            "htsget POST reads ticket with regions → sliced ticket (Ferrum, htsget-rs)",
+            Some(body),
+            validate_htsget_ticket_reads,
         )
         .await;
     }
@@ -806,11 +882,13 @@ async fn level2_post_variants_ticket_with_regions(
         "regions": [{"referenceName": "chr1", "start": 0, "end": 500}]
     });
     if ferrum_like(mode) {
-        return post_ticket_regions_unsupported(
+        return ferrum_sliced_ticket(
             client,
+            reqwest::Method::POST,
             &url,
-            "htsget POST variants ticket with regions → InvalidInput (Ferrum does not slice)",
-            body,
+            "htsget POST variants ticket with regions → sliced ticket (Ferrum, htsget-rs)",
+            Some(body),
+            validate_htsget_ticket_variants,
         )
         .await;
     }
@@ -918,40 +996,60 @@ async fn level2_get_unsupported_format_cram_on_bam(
     }
 }
 
-async fn level2_get_class_header_invalid(base: &str, client: &HttpClient) -> TestCaseResult {
+/// `class=header` is part of htsget 1.3: the ticket covers the header only. Ferrum modes accept
+/// the "no index" / "not in node storage" setup gaps as skip; other modes expect a 200 ticket.
+async fn level2_get_class_header(base: &str, client: &HttpClient, mode: Mode) -> TestCaseResult {
     let id = reads_object_id();
     let url = format!(
         "{}/reads/{}?class=header",
         base.trim_end_matches('/'),
         percent_encode_path_segment(&id)
     );
-    let name = "htsget GET reads ?class=header → InvalidInput";
+    let name = "htsget GET reads ?class=header → header ticket";
+    if ferrum_like(mode) {
+        return ferrum_sliced_ticket(
+            client,
+            reqwest::Method::GET,
+            &url,
+            name,
+            None,
+            validate_htsget_ticket_reads,
+        )
+        .await;
+    }
     match fetch_json(client, &url).await {
-        Ok((status, _, v))
-            if status.as_u16() == 400 && htsget_error_code(&v) == Some("InvalidInput") =>
-        {
-            if let Err(e) = validate_htsget_error(&v) {
+        Ok((status, _, v)) if status.is_success() => {
+            if let Err(e) = validate_htsget_ticket_reads(&v) {
                 return fail(
                     name,
                     ComplianceLevel::Level2,
-                    TestCategory::Robustness,
-                    format!("error body OpenAPI: {}", e),
+                    TestCategory::Interoperability,
+                    format!("ticket OpenAPI: {}", e),
                 );
             }
-            TestCaseResult::pass(name, ComplianceLevel::Level2, TestCategory::Robustness)
+            TestCaseResult::pass(
+                name,
+                ComplianceLevel::Level2,
+                TestCategory::Interoperability,
+            )
         }
         Ok((status, text, v)) => fail(
             name,
             ComplianceLevel::Level2,
-            TestCategory::Robustness,
+            TestCategory::Interoperability,
             format!(
-                "expected HTTP 400 InvalidInput for class=header, got {} err={:?} {:.200}",
+                "expected a 2xx header ticket for class=header, got {} err={:?} {:.200}",
                 status,
                 htsget_error_code(&v),
                 text.chars().take(200).collect::<String>()
             ),
         ),
-        Err(e) => fail(name, ComplianceLevel::Level2, TestCategory::Robustness, e),
+        Err(e) => fail(
+            name,
+            ComplianceLevel::Level2,
+            TestCategory::Interoperability,
+            e,
+        ),
     }
 }
 
@@ -1117,11 +1215,46 @@ pub async fn run_htsget_checks(
     tests.push(level2_post_variants_ticket_with_regions(&base, client, mode).await);
     tests.push(level2_post_reads_with_query_invalid(&base, client).await);
     tests.push(level2_get_unsupported_format_cram_on_bam(&base, client).await);
-    tests.push(level2_get_class_header_invalid(&base, client).await);
+    tests.push(level2_get_class_header(&base, client, mode).await);
     tests.push(level4_htsget_dataset_auth(&base, client).await);
 
     Ok(ServiceReport {
         service: ServiceKind::Htsget,
         tests,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn sliced_ticket_needs_range_or_data_url() {
+        let whole = json!({"htsget": {"format": "BAM", "urls": [
+            {"url": "http://h/ga4gh/drs/v1/objects/x/stream"}
+        ]}});
+        assert!(!ticket_is_sliced(&whole));
+        let ranged = json!({"htsget": {"format": "BAM", "urls": [
+            {"url": "http://h/ga4gh/drs/v1/objects/x/stream", "headers": {"Range": "bytes=0-99"}}
+        ]}});
+        assert!(ticket_is_sliced(&ranged));
+        let data = json!({"htsget": {"format": "BAM", "urls": [
+            {"url": "data:;base64,AAAA"}
+        ]}});
+        assert!(ticket_is_sliced(&data));
+    }
+
+    #[test]
+    fn only_index_and_storage_gaps_skip() {
+        let no_index = json!({"htsget": {"error": "NotFound", "message": "no index for this object: register one"}});
+        assert!(ferrum_slice_setup_gap(404, &no_index).is_some());
+        let url_backed = json!({"htsget": {"error": "InvalidInput", "message": "region tickets need the object in this node's storage (local, s3 or minio)"}});
+        assert!(ferrum_slice_setup_gap(400, &url_backed).is_some());
+        // The old "regions are not supported" rejection is not a setup gap: it fails.
+        let rejected = json!({"htsget": {"error": "InvalidInput", "message": "genomic region slicing is not supported; omit referenceName, start, end, and POST regions (whole-object tickets only)"}});
+        assert!(ferrum_slice_setup_gap(400, &rejected).is_none());
+        let other_404 = json!({"htsget": {"error": "NotFound", "message": "object not found"}});
+        assert!(ferrum_slice_setup_gap(404, &other_404).is_none());
+    }
 }

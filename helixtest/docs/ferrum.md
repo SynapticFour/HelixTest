@@ -75,7 +75,7 @@ With **`HELIXTEST_PROFILE=ferrum`** (or matching env URLs), **no extra htsget en
 |------|----------------|
 | Service-info | `GET …/reads/service-info` and `…/variants/service-info` — `type` (`org.ga4gh` / `htsget` / **1.3.0**), `htsget.datatype`, `formats` (reads: **BAM** + CRAM; variants: **VCF**/BCF), `fieldsParameterEffective` / `tagsParametersEffective` **false**. |
 | Tickets | `GET`/`POST` reads & variants (`POST` JSON with no query string); `Content-Type` `application/vnd.ga4gh.htsget…` or JSON; ticket `urls[0].url` path **…/ga4gh/drs/v1/objects/{id}/stream**. |
-| Errors | Variants URL with a **reads-only** id → **404** `NotFound`; `POST` with **query string** → **400** `InvalidInput`; `GET ?format=CRAM` on a **BAM** object → **400** `UnsupportedFormat`; `GET ?class=header` → **400** `InvalidInput`; **`POST` JSON with `regions`** → **400** `InvalidInput` (Ferrum does not slice; no silent whole-file ticket). |
+| Errors | Variants URL with a **reads-only** id → **404** `NotFound`; `POST` with **query string** → **400** `InvalidInput`; `GET ?format=CRAM` on a **BAM** object → **400** `UnsupportedFormat`; `GET ?class=header` and **`POST` JSON with `regions`** → a **sliced ticket** (stream URLs with `Range` headers or `data:` URLs; Ferrum computes them with htsget-rs from the object's index). A whole-object ticket for these requests fails. If the seeded object has no index (**404** `NotFound`, message about the index) or is a URL-backed placeholder (**400** `InvalidInput`, message about node storage), the check is **skipped**, not passed. Seed a stored BAM + `.bai` / VCF.gz + `.tbi` and set `HTSGET_READS_OBJECT_ID` / `HTSGET_VARIANTS_OBJECT_ID` to exercise it. |
 
 **Object IDs** (Ferrum demo / HelixTest DRS):
 
