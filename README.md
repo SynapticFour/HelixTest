@@ -21,7 +21,7 @@ For a team that runs that service and wants the check from outside it.
 - It does not start Ferrum, ga4gh-infra, or any other server.
 - Runs in October 2026 against other vendors' servers showed that dedicated profiles are needed. No comparison or ranking follows, and they are not evidence that an implementation conforms. Registry: HELIXTEST-COMPARE-001. The write-up is [docs/third-party-targets.md](docs/third-party-targets.md).
 - Profiles for servers from other vendors are in progress. Registry: HELIX-OPEN-001. `profiles/ga4gh-drs.toml` on this branch only selects DRS checks.
-- The published tag `v0.1.3` peels to `1832c043e1679ec283cb2113510ee33684317cce`. This default branch is `1926dbdd7c70985a3ab3b7b623a782e05f994453` (`v0.1.3-35-g1926dbd`). The tag is the release lineage. It is not this commit.
+- The latest published tag is `v0.1.4`; `git rev-parse v0.1.4^{commit}` prints its commit. The tag is the release lineage. The default branch can be ahead of it.
 - MII and KDS checks live in Ferrum and Ferrum-Lab-Kit. This suite stays on GA4GH interfaces.
 - This page describes technical behaviour. It is not legal advice and it does not by itself provide a regulatory certificate.
 

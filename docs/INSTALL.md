@@ -11,15 +11,15 @@ Prefer a GitHub Release asset. Fallback: Cargo (Rust 1.88+; libsodium for the wo
 ```bash
 # Linux x86_64 (sha256 next to the asset). 404 → cargo install below.
 curl -fsSL -o helixtest \
-  https://github.com/SynapticFour/HelixTest/releases/download/v0.1.3/helixtest-x86_64-unknown-linux-gnu
+  https://github.com/SynapticFour/HelixTest/releases/download/v0.1.4/helixtest-x86_64-unknown-linux-gnu
 chmod +x helixtest
 
 # Fallback (needs Rust + libsodium-dev / brew libsodium):
 cargo install --git https://github.com/SynapticFour/HelixTest.git \
-  --tag v0.1.3 --locked --bin helixtest
+  --tag v0.1.4 --locked --bin helixtest
 ```
 
-Attach missing assets: Actions → **Release binaries** → `workflow_dispatch` with tag `v0.1.3`. `cargo binstall` is not published.
+Attach missing assets: Actions → **Release binaries** → `workflow_dispatch` with tag `v0.1.4`. `cargo binstall` is not published.
 
 ## One URL, one report
 
@@ -39,4 +39,4 @@ Opt-in (does not run on every PR): GitHub Actions workflow **Live Ferrum GHCR** 
 
 **Co-deploy (Ferrum + ga4gh-infra):** pin Ferrum **v0.3.2** and **ga4gh-infra-v0.2.3** (same as Ferrum `VERSIONS.lock`). Local: Ferrum `make up-pilot-local` then `helixtest --all --mode ferrum+infra --profile ferrum-infra-pilot`. Hosted proof: Ferrum workflow **ferrum+infra (HelixTest)** (`helixtest-ferrum-infra.yml`, dispatch; schedule may be off). Not GA4GH certification.
 
-**GitHub Action for third parties:** [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) default binaries are **v0.1.3** (same as this repo’s suite pin). Schema source of truth remains the published GA4GH OpenAPI (vendored in this repo).
+**GitHub Action for third parties:** [synapticfour/helixtest-action](https://github.com/SynapticFour/helixtest-action) default binaries are **v0.1.3** until that action is updated. Schema source of truth remains the published GA4GH OpenAPI (vendored in this repo).

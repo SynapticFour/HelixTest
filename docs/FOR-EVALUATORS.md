@@ -8,7 +8,7 @@ HelixTest is a Rust suite. The command is `helixtest`. You point it at a GA4GH A
 
 `make prove` checks this repository with no server: workspace tests, an SPDX check, and a release build of the CLI. Four tests that need a live target are ignored. `make test-live` runs them, and only when someone asks. A passing run is this project's own check. It is not an official GA4GH certification. Registry: TOOL-HELIXTEST-STATUS-001, HELIXTEST-MATURITY-001.
 
-The public stage is Early use. Early use is not general availability. The published release tag `v0.1.3` peels to `1832c043e1679ec283cb2113510ee33684317cce`. The default branch this page was written from is `1926dbdd7c70985a3ab3b7b623a782e05f994453`, which `git describe` reports as `v0.1.3-35-g1926dbd`. The tag is the release lineage. It is not that commit.
+The public stage is Early use. Early use is not general availability. The latest published release tag is `v0.1.4`; `git rev-parse v0.1.4^{commit}` prints its commit. The tag is the release lineage. The default branch can be ahead of it.
 
 ## What it checks
 
