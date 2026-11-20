@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-20
+
+Ferrum CI pins this tag from Ferrum v0.3.11 (`VERSIONS.lock` `HELIXTEST_REF=v0.1.4`). Ferrum v0.3.11 serves htsget region and header tickets, which tag `v0.1.3` still expects to be refused with 400. `v0.1.3` remains the previous cut.
+
 ### Changed
 
 - htsget, Ferrum modes: `POST` with `regions` and `GET ?class=header` now expect a sliced ticket (stream URLs with `Range` headers or `data:` URLs), matching Ferrum's htsget-rs region support. A whole-object ticket fails. "No index" (404 `NotFound`) and "not in node storage" (400 `InvalidInput`) errors for the seeded object are reported as skip with the reason. The old "region slicing is not supported" 400 now fails. Other modes: `class=header` expects a 2xx ticket (it is part of htsget 1.3); before, every mode expected 400.
