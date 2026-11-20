@@ -43,6 +43,12 @@ path = "src/lib.rs"
 [[bin]]
 name = "crypt4gh"
 path = "src/bin.rs"
+required-features = ["bin"]
+
+# SynapticFour: the command-line tool's dependencies (clap 3 -> atty, pretty_env_logger ->
+# humantime 1, rpassword) are only built with `--features bin`. HelixTest uses the library.
+[features]
+bin = ["dep:clap", "dep:pretty_env_logger", "dep:rpassword"]
 
 [dependencies.base64]
 version = "0.13.0"
@@ -56,6 +62,7 @@ features = [
     "derive",
     "env",
 ]
+optional = true
 
 [dependencies.itertools]
 version = "0.10"
@@ -71,12 +78,14 @@ version = "0.4"
 
 [dependencies.pretty_env_logger]
 version = "0.4"
+optional = true
 
 [dependencies.regex]
 version = "1.5"
 
 [dependencies.rpassword]
 version = "7.5"
+optional = true
 
 [dependencies.aes]
 version = "0.8"
