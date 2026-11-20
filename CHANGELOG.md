@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- htsget, Ferrum modes: `POST` with `regions` and `GET ?class=header` now expect a sliced ticket (stream URLs with `Range` headers or `data:` URLs), matching Ferrum's htsget-rs region support. A whole-object ticket fails. "No index" (404 `NotFound`) and "not in node storage" (400 `InvalidInput`) errors for the seeded object are reported as skip with the reason. The old "region slicing is not supported" 400 now fails. Other modes: `class=header` expects a 2xx ticket (it is part of htsget 1.3); before, every mode expected 400.
+
 ### Added
 
 - Profile `ferrum-public` + `execution_allowlist`: WES/TES/E2E against host allowlist workflows (env-configured). Success runs real digest-pinned tasks; non-allowlisted WES submits expect HTTP 403. Fail closed if allowlist env is missing. Stub `trs://test-tool/…` path remains for `ferrum.toml` / CI stubs. See [helixtest/docs/ferrum.md](helixtest/docs/ferrum.md).
